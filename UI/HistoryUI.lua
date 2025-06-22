@@ -168,10 +168,25 @@ function HistoryUI:RefreshHistoryTable()
     -- Clear existing content
     self.scrollFrame:ReleaseChildren()
 
+    -- Debug: Check tracker status
+    E:DebugPrint("[DEBUG] HistoryUI: Tracker exists: %s", tostring(E.Tracker ~= nil))
+    if E.Tracker and E.Tracker.db then
+        E:DebugPrint("[DEBUG] HistoryUI: Tracker enabled: %s", tostring(E.Tracker.db.enabled))
+        E:DebugPrint("[DEBUG] HistoryUI: Raw history count: %d", #(E.Tracker.db.history or {}))
+    end
+
     -- Get history data with current limit
     local limit = self.currentLimit or 50
     if limit == 999 then limit = nil end -- "All" option
     local allHistory = E.Tracker:GetHistory(limit)
+
+    -- Debug: Check what we got
+    E:DebugPrint("[DEBUG] HistoryUI: Retrieved %d history entries", #allHistory)
+    if #allHistory > 0 then
+        E:DebugPrint("[DEBUG] HistoryUI: First entry: %s (%s)",
+            allHistory[1].itemName or "unknown",
+            allHistory[1].rollTypeName or "unknown")
+    end
 
     -- Apply filter
     local history = {}
@@ -183,6 +198,8 @@ function HistoryUI:RefreshHistoryTable()
             table.insert(history, entry)
         end
     end
+
+    E:DebugPrint("[DEBUG] HistoryUI: After filtering (%s): %d entries", filter, #history)
 
     -- Create table header
     CreateTableHeader(self.scrollFrame)
@@ -317,6 +334,25 @@ function HistoryUI:CreateTableControls(controlsGroup)
         self:RefreshHistoryTable()
     end)
     controlsGroup:AddChild(refreshButton)
+
+    -- Test data button
+    local testButton = AceGUI:Create("Button")
+    testButton:SetText("Add Test Data")
+    testButton:SetWidth(100)
+    testButton:SetCallback("OnClick", function()
+        -- Add some test roll data
+        E.Tracker:TrackRoll("|cff9d9d9d|Hitem:2589::::::::1::::::::|h[Linen Cloth]|h|r", "Linen Cloth", 1, 0)           -- Pass
+        E.Tracker:TrackRoll("|cff1eff00|Hitem:25:::::::::1::::::::|h[Worn Shortsword]|h|r", "Worn Shortsword", 2, 1)    -- Need
+        E.Tracker:TrackRoll("|cff0070dd|Hitem:2567::::::::1::::::::|h[Evocator's Blade]|h|r", "Evocator's Blade", 3, 2) -- Greed
+        E.Tracker:TrackRoll(
+            "|cffa335ee|Hitem:19019::::::::1::::::::|h[Thunderfury, Blessed Blade of the Windseeker]|h|r", "Thunderfury",
+            4,
+            0)                                                                                                             -- Pass Epic
+        E.Tracker:TrackRoll("|cffff8000|Hitem:17182::::::::1::::::::|h[Sulfuras, Hand of Ragnaros]|h|r", "Sulfuras", 5, 1) -- Need Legendary
+        E:Print("Added 5 test entries to history")
+        self:RefreshHistoryTable()
+    end)
+    controlsGroup:AddChild(testButton)
 
     -- Clear history button
     local clearButton = AceGUI:Create("Button")
