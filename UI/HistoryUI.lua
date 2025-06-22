@@ -136,6 +136,16 @@ function HistoryUI:CreateHistoryTab(container)
     mainGroup:SetLayout("Fill")
     container:AddChild(mainGroup)
 
+    -- Controls container
+    local controlsGroup = AceGUI:Create("SimpleGroup")
+    controlsGroup:SetFullWidth(true)
+    controlsGroup:SetHeight(50)
+    controlsGroup:SetLayout("Flow")
+    mainGroup:AddChild(controlsGroup)
+
+    -- Add table controls
+    self:CreateTableControls(controlsGroup)
+
     -- Table container with scroll
     local scrollFrame = AceGUI:Create("ScrollFrame")
     scrollFrame:SetLayout("List")
@@ -143,8 +153,10 @@ function HistoryUI:CreateHistoryTab(container)
     scrollFrame:SetFullHeight(true)
     mainGroup:AddChild(scrollFrame)
 
-    -- Store reference for refreshing
+    -- Store references for refreshing
     self.scrollFrame = scrollFrame
+    self.currentLimit = 50     -- Default to showing 50 items
+    self.currentFilter = "all" -- Default to showing all types
 
     -- Populate the table
     self:RefreshHistoryTable()
@@ -156,8 +168,21 @@ function HistoryUI:RefreshHistoryTable()
     -- Clear existing content
     self.scrollFrame:ReleaseChildren()
 
-    -- Get history data
-    local history = E.Tracker:GetHistory(100) -- Show last 100 items
+    -- Get history data with current limit
+    local limit = self.currentLimit or 50
+    if limit == 999 then limit = nil end -- "All" option
+    local allHistory = E.Tracker:GetHistory(limit)
+
+    -- Apply filter
+    local history = {}
+    local filter = self.currentFilter or "all"
+
+    for _, entry in ipairs(allHistory) do
+        local rollType = entry.rollTypeName or "pass"
+        if filter == "all" or filter == rollType then
+            table.insert(history, entry)
+        end
+    end
 
     -- Create table header
     CreateTableHeader(self.scrollFrame)
@@ -189,10 +214,24 @@ function HistoryUI:RefreshHistoryTable()
 end
 
 function HistoryUI:AddTableSummary()
-    local history = E.Tracker:GetHistory(100)
+    -- Get the currently filtered history
+    local limit = self.currentLimit or 50
+    if limit == 999 then limit = nil end
+    local allHistory = E.Tracker:GetHistory(limit)
+
+    local history = {}
+    local filter = self.currentFilter or "all"
+
+    for _, entry in ipairs(allHistory) do
+        local rollType = entry.rollTypeName or "pass"
+        if filter == "all" or filter == rollType then
+            table.insert(history, entry)
+        end
+    end
+
     if #history == 0 then return end
 
-    -- Count roll types
+    -- Count roll types in current view
     local counts = { pass = 0, need = 0, greed = 0 }
     for _, entry in ipairs(history) do
         local rollType = entry.rollTypeName or "pass"
@@ -210,8 +249,9 @@ function HistoryUI:AddTableSummary()
     summaryBg:SetColorTexture(0.3, 0.3, 0.4, 0.6)
 
     -- Summary text
-    local summaryText = string.format("Showing %d items | Pass: %d | Need: %d | Greed: %d",
-        #history, counts.pass, counts.need, counts.greed)
+    local filterText = filter == "all" and "All Types" or (filter:gsub("^%l", string.upper) .. " Only")
+    local summaryText = string.format("Showing %d items (%s) | Pass: %d | Need: %d | Greed: %d",
+        #history, filterText, counts.pass, counts.need, counts.greed)
 
     local summaryLabel = AceGUI:Create("Label")
     summaryLabel:SetText(summaryText)
@@ -222,6 +262,83 @@ function HistoryUI:AddTableSummary()
     summaryFrame:AddChild(summaryLabel)
 
     self.scrollFrame:AddChild(summaryFrame)
+end
+
+-- Create table controls (filter, limit, refresh)
+function HistoryUI:CreateTableControls(controlsGroup)
+    -- Limit dropdown
+    local limitLabel = AceGUI:Create("Label")
+    limitLabel:SetText("Show:")
+    limitLabel:SetWidth(40)
+    controlsGroup:AddChild(limitLabel)
+
+    local limitDropdown = AceGUI:Create("Dropdown")
+    limitDropdown:SetWidth(80)
+    limitDropdown:SetList({
+        [25] = "25",
+        [50] = "50",
+        [100] = "100",
+        [200] = "200",
+        [999] = "All"
+    })
+    limitDropdown:SetValue(50)
+    limitDropdown:SetCallback("OnValueChanged", function(widget, event, value)
+        self.currentLimit = value
+        self:RefreshHistoryTable()
+    end)
+    controlsGroup:AddChild(limitDropdown)
+
+    -- Filter dropdown
+    local filterLabel = AceGUI:Create("Label")
+    filterLabel:SetText("Filter:")
+    filterLabel:SetWidth(40)
+    controlsGroup:AddChild(filterLabel)
+
+    local filterDropdown = AceGUI:Create("Dropdown")
+    filterDropdown:SetWidth(100)
+    filterDropdown:SetList({
+        all = "All",
+        pass = "Pass Only",
+        need = "Need Only",
+        greed = "Greed Only"
+    })
+    filterDropdown:SetValue("all")
+    filterDropdown:SetCallback("OnValueChanged", function(widget, event, value)
+        self.currentFilter = value
+        self:RefreshHistoryTable()
+    end)
+    controlsGroup:AddChild(filterDropdown)
+
+    -- Refresh button
+    local refreshButton = AceGUI:Create("Button")
+    refreshButton:SetText("Refresh")
+    refreshButton:SetWidth(80)
+    refreshButton:SetCallback("OnClick", function()
+        self:RefreshHistoryTable()
+    end)
+    controlsGroup:AddChild(refreshButton)
+
+    -- Clear history button
+    local clearButton = AceGUI:Create("Button")
+    clearButton:SetText("Clear History")
+    clearButton:SetWidth(100)
+    clearButton:SetCallback("OnClick", function()
+        StaticPopupDialogs["ULTIMATELOOT_CLEAR_HISTORY"] = {
+            text = "Are you sure you want to clear the roll history?\\n\\nThis cannot be undone.",
+            button1 = "Yes",
+            button2 = "No",
+            OnAccept = function()
+                E.Tracker:ClearHistory()
+                self:RefreshHistoryTable()
+            end,
+            timeout = 0,
+            whileDead = true,
+            hideOnEscape = true,
+            preferredIndex = 3,
+        }
+        StaticPopup_Show("ULTIMATELOOT_CLEAR_HISTORY")
+    end)
+    controlsGroup:AddChild(clearButton)
 end
 
 -- Refresh function for external calls
