@@ -47,10 +47,10 @@ local function CreateTableHeader(scrollFrame)
     headerFrame:SetFullWidth(true)
     headerFrame:SetLayout("Flow")
 
-    -- Create header background
+    -- Create header background (WoW 3.3.5a compatible)
     local headerBg = headerFrame.frame:CreateTexture(nil, "BACKGROUND")
     headerBg:SetAllPoints(headerFrame.frame)
-    headerBg:SetColorTexture(0.2, 0.2, 0.3, 0.8)
+    headerBg:SetTexture(0.2, 0.2, 0.3, 0.8)
 
     for _, column in ipairs(COLUMNS) do
         local header = AceGUI:Create("Label")
@@ -70,13 +70,13 @@ local function CreateTableRow(scrollFrame, rowData, isEven)
     rowFrame:SetFullWidth(true)
     rowFrame:SetLayout("Flow")
 
-    -- Add alternating row background
+    -- Add alternating row background (WoW 3.3.5a compatible)
     local rowBg = rowFrame.frame:CreateTexture(nil, "BACKGROUND")
     rowBg:SetAllPoints(rowFrame.frame)
     if isEven then
-        rowBg:SetColorTexture(0.1, 0.1, 0.15, 0.3)
+        rowBg:SetTexture(0.1, 0.1, 0.15, 0.3)
     else
-        rowBg:SetColorTexture(0.05, 0.05, 0.1, 0.5)
+        rowBg:SetTexture(0.05, 0.05, 0.1, 0.5)
     end
 
     -- Item column
@@ -243,10 +243,10 @@ function HistoryUI:AddTableSummary()
     summaryFrame:SetFullWidth(true)
     summaryFrame:SetLayout("Flow")
 
-    -- Summary background
+    -- Summary background (WoW 3.3.5a compatible)
     local summaryBg = summaryFrame.frame:CreateTexture(nil, "BACKGROUND")
     summaryBg:SetAllPoints(summaryFrame.frame)
-    summaryBg:SetColorTexture(0.3, 0.3, 0.4, 0.6)
+    summaryBg:SetTexture(0.3, 0.3, 0.4, 0.6)
 
     -- Summary text
     local filterText = filter == "all" and "All Types" or (filter:gsub("^%l", string.upper) .. " Only")
