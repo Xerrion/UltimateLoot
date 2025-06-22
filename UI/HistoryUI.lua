@@ -129,29 +129,22 @@ local function CreateTableRow(scrollFrame, rowData, isEven)
 end
 
 function HistoryUI:CreateHistoryTab(container)
-    -- Main container
-    local mainGroup = AceGUI:Create("SimpleGroup")
-    mainGroup:SetFullWidth(true)
-    mainGroup:SetFullHeight(true)
-    mainGroup:SetLayout("Fill")
-    container:AddChild(mainGroup)
-
-    -- Controls container
+    -- Controls container at top
     local controlsGroup = AceGUI:Create("SimpleGroup")
     controlsGroup:SetFullWidth(true)
     controlsGroup:SetHeight(50)
     controlsGroup:SetLayout("Flow")
-    mainGroup:AddChild(controlsGroup)
+    container:AddChild(controlsGroup)
 
     -- Add table controls
     self:CreateTableControls(controlsGroup)
 
-    -- Table container with scroll
+    -- History scroll frame - use Flow layout like original
     local scrollFrame = AceGUI:Create("ScrollFrame")
-    scrollFrame:SetLayout("List")
+    scrollFrame:SetLayout("Flow")
     scrollFrame:SetFullWidth(true)
     scrollFrame:SetFullHeight(true)
-    mainGroup:AddChild(scrollFrame)
+    container:AddChild(scrollFrame)
 
     -- Store references for refreshing
     self.scrollFrame = scrollFrame
@@ -201,29 +194,65 @@ function HistoryUI:RefreshHistoryTable()
 
     E:DebugPrint("[DEBUG] HistoryUI: After filtering (%s): %d entries", filter, #history)
 
-    -- Create table header
-    CreateTableHeader(self.scrollFrame)
-
     if #history == 0 then
-        -- No data message
-        local noDataFrame = AceGUI:Create("SimpleGroup")
-        noDataFrame:SetFullWidth(true)
-        noDataFrame:SetLayout("Fill")
-
         local label = AceGUI:Create("Label")
         label:SetText(L["NO_ITEMS_PASSED"] or "No items have been handled yet.")
         label:SetFullWidth(true)
-        label:SetJustifyH("CENTER")
-        label:SetColor(0.7, 0.7, 0.7)
-        noDataFrame:AddChild(label)
-
-        self.scrollFrame:AddChild(noDataFrame)
+        self.scrollFrame:AddChild(label)
         return
     end
 
-    -- Create table rows
+    -- Create simple table entries (like original, but with decision info)
     for i, entry in ipairs(history) do
-        CreateTableRow(self.scrollFrame, entry, i % 2 == 0)
+        local itemGroup = AceGUI:Create("InlineGroup")
+        itemGroup:SetTitle("")
+        itemGroup:SetFullWidth(true)
+        itemGroup:SetLayout("Flow")
+
+        -- Item link
+        local itemLabel = AceGUI:Create("InteractiveLabel")
+        itemLabel:SetText(entry.itemLink or entry.itemName)
+        itemLabel:SetWidth(250)
+        local r, g, b = SetQualityColor(itemLabel, entry.quality)
+        itemLabel:SetCallback("OnEnter", function(widget)
+            if entry.itemLink and entry.itemLink:match("|H.-|h") then
+                GameTooltip:SetOwner(widget.frame, "ANCHOR_CURSOR")
+                local success = pcall(GameTooltip.SetHyperlink, GameTooltip, entry.itemLink)
+                if success then
+                    GameTooltip:Show()
+                else
+                    GameTooltip:Hide()
+                end
+            end
+        end)
+        itemLabel:SetCallback("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        itemGroup:AddChild(itemLabel)
+
+        -- Quality
+        local qualityLabel = AceGUI:Create("Label")
+        qualityLabel:SetText(entry.qualityName)
+        qualityLabel:SetWidth(80)
+        qualityLabel:SetColor(r, g, b)
+        itemGroup:AddChild(qualityLabel)
+
+        -- Roll Decision
+        local decisionLabel = AceGUI:Create("Label")
+        local rollTypeName = entry.rollTypeName or "pass"
+        decisionLabel:SetText(GetRollDecisionText(rollTypeName))
+        decisionLabel:SetWidth(60)
+        local dr, dg, db = GetRollDecisionColor(rollTypeName)
+        decisionLabel:SetColor(dr, dg, db)
+        itemGroup:AddChild(decisionLabel)
+
+        -- Date
+        local dateLabel = AceGUI:Create("Label")
+        dateLabel:SetText(entry.date)
+        dateLabel:SetWidth(130)
+        itemGroup:AddChild(dateLabel)
+
+        self.scrollFrame:AddChild(itemGroup)
     end
 
     -- Add summary at the bottom
@@ -255,17 +284,7 @@ function HistoryUI:AddTableSummary()
         counts[rollType] = counts[rollType] + 1
     end
 
-    -- Create summary row
-    local summaryFrame = AceGUI:Create("SimpleGroup")
-    summaryFrame:SetFullWidth(true)
-    summaryFrame:SetLayout("Flow")
-
-    -- Summary background (WoW 3.3.5a compatible)
-    local summaryBg = summaryFrame.frame:CreateTexture(nil, "BACKGROUND")
-    summaryBg:SetAllPoints(summaryFrame.frame)
-    summaryBg:SetTexture(0.3, 0.3, 0.4, 0.6)
-
-    -- Summary text
+    -- Simple summary without textures
     local filterText = filter == "all" and "All Types" or (filter:gsub("^%l", string.upper) .. " Only")
     local summaryText = string.format("Showing %d items (%s) | Pass: %d | Need: %d | Greed: %d",
         #history, filterText, counts.pass, counts.need, counts.greed)
@@ -273,12 +292,8 @@ function HistoryUI:AddTableSummary()
     local summaryLabel = AceGUI:Create("Label")
     summaryLabel:SetText(summaryText)
     summaryLabel:SetFullWidth(true)
-    summaryLabel:SetJustifyH("CENTER")
-    summaryLabel:SetColor(1, 1, 1)
-    summaryLabel:SetFontObject(GameFontNormal)
-    summaryFrame:AddChild(summaryLabel)
-
-    self.scrollFrame:AddChild(summaryFrame)
+    summaryLabel:SetColor(0.8, 0.8, 0.8)
+    self.scrollFrame:AddChild(summaryLabel)
 end
 
 -- Create table controls (filter, limit, refresh)
@@ -326,9 +341,10 @@ function HistoryUI:CreateTableControls(controlsGroup)
     end)
     controlsGroup:AddChild(filterDropdown)
 
+
     -- Refresh button
     local refreshButton = AceGUI:Create("Button")
-    refreshButton:SetText("Refresh")
+    refreshButton:SetText(L["REFRESH"])
     refreshButton:SetWidth(80)
     refreshButton:SetCallback("OnClick", function()
         self:RefreshHistoryTable()
@@ -338,13 +354,13 @@ function HistoryUI:CreateTableControls(controlsGroup)
 
     -- Clear history button
     local clearButton = AceGUI:Create("Button")
-    clearButton:SetText("Clear History")
+    clearButton:SetText(L["CLEAR_HISTORY"])
     clearButton:SetWidth(100)
     clearButton:SetCallback("OnClick", function()
         StaticPopupDialogs["ULTIMATELOOT_CLEAR_HISTORY"] = {
-            text = "Are you sure you want to clear the roll history?\\n\\nThis cannot be undone.",
-            button1 = "Yes",
-            button2 = "No",
+            text = "Are you sure you want to clear the roll history?\n\nThis cannot be undone.",
+            button1 = L["YES"],
+            button2 = L["NO"],
             OnAccept = function()
                 E.Tracker:ClearHistory()
                 self:RefreshHistoryTable()
