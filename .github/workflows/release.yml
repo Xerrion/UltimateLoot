@@ -31,8 +31,15 @@ jobs:
         VERSION=${{ github.ref_name }}
         VERSION_NO_V=${VERSION#v}
         
-        # Get changelog section for this version
-        sed -n "/## \[${VERSION_NO_V}\]/,/## \[/p" CHANGELOG.md | head -n -1 > release_notes.md
+        # Get changelog section for this version (improved to handle edge cases)
+        awk "/## \[${VERSION_NO_V}\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md > release_notes.md
+        
+        # If no specific version found, use a default message
+        if [ ! -s release_notes.md ]; then
+          echo "Release ${VERSION}" > release_notes.md
+          echo "" >> release_notes.md
+          echo "See [CHANGELOG.md](CHANGELOG.md) for detailed changes." >> release_notes.md
+        fi
         
         # Set output for release notes
         echo "notes<<EOF" >> $GITHUB_OUTPUT
