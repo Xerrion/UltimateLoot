@@ -2,7 +2,20 @@
 
 All notable changes to UltimateLoot will be documented in this file.
 
-## [2.0.0] - 2024-01-XX
+## [2.1.0] - 2025-06-22
+
+### ✨ New Features
+
+#### History Tab Improvements
+- **Table Headers**: Added clean, simple headers to History tab (Item | Quality | Decision | Date)
+- **Visual Clarity**: Headers use GameFontNormalLarge with white text for better readability
+- **Perfect Alignment**: Headers match column widths for professional appearance
+
+### 🐛 Bug Fixes
+- **Empty History Display**: Fixed "No roll history yet" message not showing when history is empty
+- **UI Consistency**: Ensured History tab matches the style of other tabs
+
+## [2.0.0] - 2025-06-22
 
 ### 🚀 Major Release - Complete Rewrite
 
