@@ -84,6 +84,12 @@ L["ITEMS_HANDLED_MOST_OFTEN"] = "Items Handled Most Often"
 L["PASSED_X_TIMES"] = "Handled %d times"
 L["ROLL_TYPE_BREAKDOWN"] = "Roll Type Breakdown"
 
+-- Roll decision types
+L["PASS_ROLLS"] = "Pass"
+L["NEED_ROLLS"] = "Need"
+L["GREED_ROLLS"] = "Greed"
+L["DECISION"] = "Decision"
+
 -- Graph tab
 L["HOURLY_ACTIVITY"] = "Hourly Activity (Last 24 Hours)"
 L["TOTAL_ROLLS_24H"] = "Total rolls in last 24 hours: %d"
