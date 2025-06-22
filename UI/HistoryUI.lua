@@ -194,6 +194,42 @@ function HistoryUI:RefreshHistoryTable()
 
     E:DebugPrint("[DEBUG] HistoryUI: After filtering (%s): %d entries", filter, #history)
 
+    -- Add simple table header
+    local headerGroup = AceGUI:Create("InlineGroup")
+    headerGroup:SetTitle("")
+    headerGroup:SetFullWidth(true)
+    headerGroup:SetLayout("Flow")
+
+    local itemHeader = AceGUI:Create("Label")
+    itemHeader:SetText("Item")
+    itemHeader:SetWidth(250)
+    itemHeader:SetFontObject(GameFontNormalLarge)
+    itemHeader:SetColor(1, 1, 1)
+    headerGroup:AddChild(itemHeader)
+
+    local qualityHeader = AceGUI:Create("Label")
+    qualityHeader:SetText("Quality")
+    qualityHeader:SetWidth(80)
+    qualityHeader:SetFontObject(GameFontNormalLarge)
+    qualityHeader:SetColor(1, 1, 1)
+    headerGroup:AddChild(qualityHeader)
+
+    local decisionHeader = AceGUI:Create("Label")
+    decisionHeader:SetText(L["DECISION"] or "Decision")
+    decisionHeader:SetWidth(60)
+    decisionHeader:SetFontObject(GameFontNormalLarge)
+    decisionHeader:SetColor(1, 1, 1)
+    headerGroup:AddChild(decisionHeader)
+
+    local dateHeader = AceGUI:Create("Label")
+    dateHeader:SetText("Date")
+    dateHeader:SetWidth(130)
+    dateHeader:SetFontObject(GameFontNormalLarge)
+    dateHeader:SetColor(1, 1, 1)
+    headerGroup:AddChild(dateHeader)
+
+    self.scrollFrame:AddChild(headerGroup)
+
     if #history == 0 then
         local label = AceGUI:Create("Label")
         label:SetText(L["NO_ITEMS_PASSED"] or "No items have been handled yet.")

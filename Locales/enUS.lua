@@ -51,6 +51,7 @@ L["CLEAR_HISTORY"] = "Clear History"
 L["CLEAR_ALL_DATA"] = "Clear All Data"
 L["RESET_SETTINGS"] = "Reset Settings"
 L["EXPORT_DATA"] = "Export Data"
+L["REFRESH"] = "Refresh"
 
 -- Confirmations
 L["CONFIRM_CLEAR_ALL"] = "Are you sure you want to clear all UltimateLoot data? This cannot be undone."
