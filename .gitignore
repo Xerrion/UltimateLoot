@@ -1,0 +1,44 @@
+# WoW Addon Development
+*.bak
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+
+# Development files
+.vscode/
+.idea/
+*.sublime-*
+
+# Logs
+*.log
+
+# Node modules (if using any build tools)
+node_modules/
+
+# Package managers
+package-lock.json
+yarn.lock
+
+# Build artifacts
+dist/
+build/
+release/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+*~
+
+# Backup files
+*.orig
+*.rej 

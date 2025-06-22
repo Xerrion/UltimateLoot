@@ -1,0 +1,14 @@
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!-- Event handling module -->
+    <Script file="Events.lua"/>
+    <!-- Item tracking module -->
+    <Script file="Tracker.lua"/>
+    <!-- Item rules module -->
+    <Script file="ItemRules.lua"/>
+    <!-- Main UltimateLoot module with slash commands -->
+    <Script file="UltimateLoot.lua"/>
+    <!-- Minimap icon module -->
+    <Script file="MinimapIcon.lua"/>
+    <!-- Debug and testing module -->
+    <Script file="Debug.lua"/>
+</Ui> 

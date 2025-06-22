@@ -1,0 +1,6 @@
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!-- Core addon options and configuration -->
+    <Script file="Options.lua"/>
+    <!-- Core addon engine and framework -->
+    <Script file="Core.lua"/>
+</Ui>

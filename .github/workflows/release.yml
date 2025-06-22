@@ -1,0 +1,52 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create Release Archive
+      run: |
+        # Create release directory
+        mkdir -p release/UltimateLoot
+        
+        # Copy addon files (exclude git and dev files)
+        cp -r Core/ Lib/ Locales/ Modules/ Settings/ UI/ release/UltimateLoot/
+        cp Init.lua UltimateLoot.toc wow_stubs.lua release/UltimateLoot/
+        
+        # Create zip archive
+        cd release
+        zip -r UltimateLoot-${{ github.ref_name }}.zip UltimateLoot/
+    
+    - name: Extract Changelog
+      id: changelog
+      run: |
+        # Extract version-specific changelog
+        VERSION=${{ github.ref_name }}
+        VERSION_NO_V=${VERSION#v}
+        
+        # Get changelog section for this version
+        sed -n "/## \[${VERSION_NO_V}\]/,/## \[/p" CHANGELOG.md | head -n -1 > release_notes.md
+        
+        # Set output for release notes
+        echo "notes<<EOF" >> $GITHUB_OUTPUT
+        cat release_notes.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: UltimateLoot ${{ github.ref_name }}
+        body: ${{ steps.changelog.outputs.notes }}
+        draft: false
+        prerelease: false
+        files: ./release/UltimateLoot-${{ github.ref_name }}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
