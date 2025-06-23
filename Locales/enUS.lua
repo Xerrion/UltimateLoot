@@ -91,6 +91,13 @@ L["NEED_ROLLS"] = "Need"
 L["GREED_ROLLS"] = "Greed"
 L["DECISION"] = "Decision"
 
+-- Date filtering
+L["DATE_RANGE"] = "Date Range"
+L["FROM"] = "From"
+L["TO"] = "To"
+L["RESET"] = "Reset"
+L["SEARCH"] = "Search"
+
 -- Graph tab
 L["HOURLY_ACTIVITY"] = "Hourly Activity (Last 24 Hours)"
 L["TOTAL_ROLLS_24H"] = "Total rolls in last 24 hours: %d"
