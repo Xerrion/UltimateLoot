@@ -4,12 +4,7 @@ local StatisticsUI = E:NewModule("StatisticsUI")
 E.StatisticsUI = StatisticsUI
 local AceGUI = E.Libs.AceGUI
 
--- Helper function to get quality color and apply it to a widget
-local function SetQualityColor(widget, quality)
-    local r, g, b = unpack(E.Tracker:GetQualityColor(quality))
-    widget:SetColor(r, g, b)
-    return r, g, b
-end
+-- Using UIUtils for shared functionality
 
 function StatisticsUI:CreateStatsTab(container)
     local stats = E.Tracker:GetStats()
@@ -55,10 +50,7 @@ function StatisticsUI:CreateStatsTab(container)
             rollLabel:SetFullWidth(true)
             rollTypeGroup:AddChild(rollLabel)
         else
-            local noDataLabel = AceGUI:Create("Label")
-            noDataLabel:SetText(L["NO_ROLL_DATA"])
-            noDataLabel:SetFullWidth(true)
-            rollTypeGroup:AddChild(noDataLabel)
+            E.UIUtils:ShowEmptyState(rollTypeGroup, L["NO_ROLL_DATA"])
         end
     end
 
@@ -102,7 +94,7 @@ function StatisticsUI:CreateStatsTab(container)
             local breakdown = string.format(L["ROLL_STATS_FORMAT"], rollData.pass, rollData.need, rollData.greed)
             qualityLabel:SetText(string.format(L["QUALITY_STATS_FORMAT"], qualityName, totalForQuality, percentage,
                 breakdown))
-            SetQualityColor(qualityLabel, quality)
+            E.UIUtils:SetQualityColor(qualityLabel, quality)
         else
             qualityLabel:SetText(string.format(L["QUALITY_NO_DATA_FORMAT"], qualityName))
             qualityLabel:SetColor(0.5, 0.5, 0.5) -- Gray out zero counts
