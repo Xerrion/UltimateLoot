@@ -14,6 +14,8 @@ local RULE_TYPES = {
 function ItemRules:OnInitialize()
     -- Register for loot decision events to apply rules
     self:RegisterMessage("ULTIMATELOOT_ITEM_HANDLED", "OnItemHandled")
+    -- Register for rule update events (for note editing)
+    self:RegisterMessage("ULTIMATELOOT_ITEM_RULE_UPDATED", "OnItemRuleUpdated")
 end
 
 function ItemRules:OnEnable()
@@ -31,27 +33,43 @@ function ItemRules:CheckItemRule(itemName, itemLink, quality)
     end
 
     local rules = E.db.item_rules
-
-    -- Check whitelist first (always pass)
-    if self:IsItemInList(itemName, itemLink, rules.whitelist) then
-        return "PASS", "Item in whitelist"
+    local matchedRules = {}
+    
+    -- Check and collect all matching rules with their priority
+    local ruleChecks = {
+        { key = "blacklist", action = "NEVER_PASS", priority = 100, reason = "Item in blacklist" },
+        { key = "always_need", action = "NEED", priority = 80, reason = "Item in always need list" },
+        { key = "always_greed", action = "GREED", priority = 60, reason = "Item in always greed list" },
+        { key = "whitelist", action = "PASS", priority = 40, reason = "Item in whitelist" }
+    }
+    
+    for _, check in ipairs(ruleChecks) do
+        if self:IsItemInList(itemName, itemLink, rules[check.key]) then
+            table.insert(matchedRules, {
+                action = check.action,
+                priority = check.priority,
+                reason = check.reason
+            })
+            
+            E:DebugPrint("[DEBUG] ItemRules: Found matching rule type %s for %s (priority %d)", 
+                check.key, itemName or "unknown", check.priority)
+        end
     end
-
-    -- Check blacklist (never pass)
-    if self:IsItemInList(itemName, itemLink, rules.blacklist) then
-        return "NEVER_PASS", "Item in blacklist"
+    
+    -- If we have multiple matching rules, sort by priority (highest first)
+    if #matchedRules > 1 then
+        table.sort(matchedRules, function(a, b) return a.priority > b.priority end)
+        
+        E:DebugPrint("[DEBUG] ItemRules: Multiple rules for %s, using %s (priority %d)", 
+            itemName or "unknown", matchedRules[1].action, matchedRules[1].priority)
+            
+        -- Apply highest priority rule
+        return matchedRules[1].action, matchedRules[1].reason .. " (highest priority)"
+    elseif #matchedRules == 1 then
+        -- Just one rule, apply it
+        return matchedRules[1].action, matchedRules[1].reason
     end
-
-    -- Check always need
-    if self:IsItemInList(itemName, itemLink, rules.always_need) then
-        return "NEED", "Item in always need list"
-    end
-
-    -- Check always greed
-    if self:IsItemInList(itemName, itemLink, rules.always_greed) then
-        return "GREED", "Item in always greed list"
-    end
-
+    
     return nil, "No specific rule"
 end
 
@@ -60,9 +78,21 @@ function ItemRules:IsItemInList(itemName, itemLink, ruleList)
     if not ruleList or #ruleList == 0 then return false end
 
     for _, rule in ipairs(ruleList) do
-        -- Match by name (case insensitive)
-        if rule.name and itemName and itemName:lower():find(rule.name:lower(), 1, true) then
-            return true
+        -- Match by name using pattern if pattern flag is set
+        if rule.name and itemName then
+            if rule.usePattern then
+                -- Use Lua pattern matching (regex-like)
+                local success, result = pcall(function() return itemName:lower():match(rule.name:lower()) end)
+                if success and result then
+                    E:DebugPrint("[DEBUG] ItemRules: Pattern match for %s with pattern %s", itemName, rule.name)
+                    return true
+                end
+            else
+                -- Use standard substring match (case insensitive)
+                if itemName:lower():find(rule.name:lower(), 1, true) then
+                    return true
+                end
+            end
         end
 
         -- Match by item ID if available
@@ -91,7 +121,7 @@ function ItemRules:ExtractItemIdFromLink(itemLink)
 end
 
 -- Add an item to a rule list
-function ItemRules:AddItemRule(ruleType, itemName, itemLink, itemId)
+function ItemRules:AddItemRule(ruleType, itemName, itemLink, itemId, options)
     if not RULE_TYPES[ruleType:upper()] then
         return false, "Invalid rule type"
     end
@@ -103,7 +133,9 @@ function ItemRules:AddItemRule(ruleType, itemName, itemLink, itemId)
         E.db.item_rules[ruleKey] = {}
         rules = E.db.item_rules[ruleKey]
     end
-
+    
+    options = options or {}
+    
     -- Check if rule already exists
     if self:IsItemInList(itemName, itemLink, rules) then
         return false, "Rule already exists"
@@ -115,12 +147,17 @@ function ItemRules:AddItemRule(ruleType, itemName, itemLink, itemId)
         link = itemLink,
         itemId = itemId or self:ExtractItemIdFromLink(itemLink),
         added = time(),
-        addedBy = UnitName("player")
+        addedBy = UnitName("player"),
+        usePattern = options.usePattern or false,
+        note = options.note
     }
 
     table.insert(rules, newRule)
 
-    E:DebugPrint("[DEBUG] ItemRules: Added %s rule for %s", ruleType, itemName or "Unknown")
+    E:DebugPrint("[DEBUG] ItemRules: Added %s rule for %s%s", 
+        ruleType, 
+        itemName or "Unknown", 
+        newRule.usePattern and " (pattern)" or "")
 
     -- Fire event for UI updates
     E:SendMessage("ULTIMATELOOT_ITEM_RULE_ADDED", {
@@ -206,6 +243,12 @@ function ItemRules:OnItemHandled(event, handledData)
         E:DebugPrint("[DEBUG] ItemRules: Item %s had rule %s (%s)",
             handledData.itemName, rule, reason)
     end
+end
+
+-- Handle rule update events (for note editing)
+function ItemRules:OnItemRuleUpdated(event, updateData)
+    if not updateData or not updateData.ruleType or not updateData.rule then return end
+    E:DebugPrint("[DEBUG] ItemRules: Updated rule for %s", updateData.rule.name or "Unknown")
 end
 
 -- Enable/disable item rules
