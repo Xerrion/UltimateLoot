@@ -41,8 +41,8 @@ local function GetRollDecisionText(rollTypeName)
     end
 end
 
--- Create table header row
-local function CreateTableHeader(scrollFrame)
+-- Create table header row with sorting support
+local function CreateTableHeader(scrollFrame, sortColumn, sortDirection)
     local headerFrame = AceGUI:Create("SimpleGroup")
     headerFrame:SetFullWidth(true)
     headerFrame:SetLayout("Flow")
@@ -53,11 +53,44 @@ local function CreateTableHeader(scrollFrame)
     headerBg:SetTexture(0.2, 0.2, 0.3, 0.8)
 
     for _, column in ipairs(COLUMNS) do
-        local header = AceGUI:Create("Label")
-        header:SetText(column.label)
+        -- Create an interactive label for headers to support clicking
+        local header = AceGUI:Create("InteractiveLabel")
+        
+        -- Add sort indicators if this is the currently sorted column
+        local headerText = column.label
+        if sortColumn == column.key then
+            headerText = headerText .. (sortDirection == "asc" and " \226\134\145" or " \226\134\147")
+        end
+        
+        header:SetText(headerText)
         header:SetWidth(column.width)
         header:SetFontObject(GameFontNormalLarge)
         header:SetColor(1, 1, 1)
+        
+        -- Make headers clickable for sorting
+        header:SetCallback("OnClick", function()
+            -- Toggle sort direction if clicking the same column
+            if E.HistoryUI.sortColumn == column.key then
+                E.HistoryUI.sortDirection = E.HistoryUI.sortDirection == "asc" and "desc" or "asc"
+            else
+                -- New column becomes the sort column with default desc order
+                E.HistoryUI.sortColumn = column.key
+                E.HistoryUI.sortDirection = "desc"
+            end
+            
+            -- Refresh the table with new sorting
+            E.HistoryUI:RefreshHistoryTable()
+        end)
+        
+        -- Add hover effect to indicate clickable headers
+        header:SetCallback("OnEnter", function(widget)
+            widget:SetColor(1, 1, 0) -- Yellow on hover
+        end)
+        
+        header:SetCallback("OnLeave", function(widget)
+            widget:SetColor(1, 1, 1) -- White when not hovering
+        end)
+        
         headerFrame:AddChild(header)
     end
 
@@ -150,6 +183,10 @@ function HistoryUI:CreateHistoryTab(container)
     self.scrollFrame = scrollFrame
     self.currentLimit = 50     -- Default to showing 50 items
     self.currentFilter = "all" -- Default to showing all types
+    
+    -- Initialize sorting properties
+    self.sortColumn = "date"  -- Default sort by date
+    self.sortDirection = "desc" -- Default newest first
 
     -- Populate the table
     self:RefreshHistoryTable()
@@ -181,54 +218,81 @@ function HistoryUI:RefreshHistoryTable()
             allHistory[1].rollTypeName or "unknown")
     end
 
-    -- Apply filter
+    -- Apply filters
     local history = {}
     local filter = self.currentFilter or "all"
+    local searchText = self.currentSearch or ""
+    searchText = searchText:lower()
+    
+    -- Date range filters
+    local startTimestamp = self.dateFilterStart and time(self.dateFilterStart) or nil
+    local endTimestamp = self.dateFilterEnd and time(self.dateFilterEnd) or nil
+    
+    -- If we have an end date, move it to the end of that day for inclusive filtering
+    if endTimestamp then
+        endTimestamp = endTimestamp + (24*60*60) - 1 -- End of the day (23:59:59)
+    end
 
     for _, entry in ipairs(allHistory) do
         local rollType = entry.rollTypeName or "pass"
-        if filter == "all" or filter == rollType then
+        local matchesFilter = filter == "all" or filter == rollType
+        local matchesSearch = true
+        local matchesDateRange = true
+        
+        -- Apply search filter if we have search text
+        if searchText ~= "" then
+            local itemName = (entry.itemName or ""):lower()
+            matchesSearch = itemName:find(searchText, 1, true) ~= nil
+        end
+        
+        -- Apply date range filter if set
+        if startTimestamp and entry.timestamp and entry.timestamp < startTimestamp then
+            matchesDateRange = false
+        end
+        
+        if endTimestamp and entry.timestamp and entry.timestamp > endTimestamp then
+            matchesDateRange = false
+        end
+        
+        if matchesFilter and matchesSearch and matchesDateRange then
             table.insert(history, entry)
         end
     end
 
     E:DebugPrint("[DEBUG] HistoryUI: After filtering (%s): %d entries", filter, #history)
+    
+    -- Apply sorting
+    if #history > 0 then
+        local sortCol = self.sortColumn or "date"
+        local sortDir = self.sortDirection or "desc"
+        
+        table.sort(history, function(a, b)
+            -- Helper function to compare values based on column type
+            local function compareValues(valA, valB)
+                if sortDir == "asc" then
+                    return valA < valB
+                else
+                    return valA > valB
+                end
+            end
+            
+            if sortCol == "item" then
+                return compareValues((a.itemName or ""):lower(), (b.itemName or ""):lower())
+            elseif sortCol == "quality" then
+                return compareValues(a.quality or 0, b.quality or 0)
+            elseif sortCol == "decision" then
+                -- Convert decision names to numeric values for comparison
+                local decisionValueA = a.rollTypeName == "need" and 3 or a.rollTypeName == "greed" and 2 or 1
+                local decisionValueB = b.rollTypeName == "need" and 3 or b.rollTypeName == "greed" and 2 or 1
+                return compareValues(decisionValueA, decisionValueB)
+            else -- Default to date
+                return compareValues(a.timestamp or 0, b.timestamp or 0)
+            end
+        end)
+    end
 
-    -- Add simple table header
-    local headerGroup = AceGUI:Create("InlineGroup")
-    headerGroup:SetTitle("")
-    headerGroup:SetFullWidth(true)
-    headerGroup:SetLayout("Flow")
-
-    local itemHeader = AceGUI:Create("Label")
-    itemHeader:SetText("Item")
-    itemHeader:SetWidth(250)
-    itemHeader:SetFontObject(GameFontNormalLarge)
-    itemHeader:SetColor(1, 1, 1)
-    headerGroup:AddChild(itemHeader)
-
-    local qualityHeader = AceGUI:Create("Label")
-    qualityHeader:SetText("Quality")
-    qualityHeader:SetWidth(80)
-    qualityHeader:SetFontObject(GameFontNormalLarge)
-    qualityHeader:SetColor(1, 1, 1)
-    headerGroup:AddChild(qualityHeader)
-
-    local decisionHeader = AceGUI:Create("Label")
-    decisionHeader:SetText(L["DECISION"] or "Decision")
-    decisionHeader:SetWidth(60)
-    decisionHeader:SetFontObject(GameFontNormalLarge)
-    decisionHeader:SetColor(1, 1, 1)
-    headerGroup:AddChild(decisionHeader)
-
-    local dateHeader = AceGUI:Create("Label")
-    dateHeader:SetText("Date")
-    dateHeader:SetWidth(130)
-    dateHeader:SetFontObject(GameFontNormalLarge)
-    dateHeader:SetColor(1, 1, 1)
-    headerGroup:AddChild(dateHeader)
-
-    self.scrollFrame:AddChild(headerGroup)
+    -- Add proper table header with sorting indicators
+    CreateTableHeader(self.scrollFrame, self.sortColumn, self.sortDirection)
 
     if #history == 0 then
         local label = AceGUI:Create("Label")
@@ -238,57 +302,9 @@ function HistoryUI:RefreshHistoryTable()
         return
     end
 
-    -- Create simple table entries (like original, but with decision info)
+    -- Create table entries with consistent styling
     for i, entry in ipairs(history) do
-        local itemGroup = AceGUI:Create("InlineGroup")
-        itemGroup:SetTitle("")
-        itemGroup:SetFullWidth(true)
-        itemGroup:SetLayout("Flow")
-
-        -- Item link
-        local itemLabel = AceGUI:Create("InteractiveLabel")
-        itemLabel:SetText(entry.itemLink or entry.itemName)
-        itemLabel:SetWidth(250)
-        local r, g, b = SetQualityColor(itemLabel, entry.quality)
-        itemLabel:SetCallback("OnEnter", function(widget)
-            if entry.itemLink and entry.itemLink:match("|H.-|h") then
-                GameTooltip:SetOwner(widget.frame, "ANCHOR_CURSOR")
-                local success = pcall(GameTooltip.SetHyperlink, GameTooltip, entry.itemLink)
-                if success then
-                    GameTooltip:Show()
-                else
-                    GameTooltip:Hide()
-                end
-            end
-        end)
-        itemLabel:SetCallback("OnLeave", function()
-            GameTooltip:Hide()
-        end)
-        itemGroup:AddChild(itemLabel)
-
-        -- Quality
-        local qualityLabel = AceGUI:Create("Label")
-        qualityLabel:SetText(entry.qualityName)
-        qualityLabel:SetWidth(80)
-        qualityLabel:SetColor(r, g, b)
-        itemGroup:AddChild(qualityLabel)
-
-        -- Roll Decision
-        local decisionLabel = AceGUI:Create("Label")
-        local rollTypeName = entry.rollTypeName or "pass"
-        decisionLabel:SetText(GetRollDecisionText(rollTypeName))
-        decisionLabel:SetWidth(60)
-        local dr, dg, db = GetRollDecisionColor(rollTypeName)
-        decisionLabel:SetColor(dr, dg, db)
-        itemGroup:AddChild(decisionLabel)
-
-        -- Date
-        local dateLabel = AceGUI:Create("Label")
-        dateLabel:SetText(entry.date)
-        dateLabel:SetWidth(130)
-        itemGroup:AddChild(dateLabel)
-
-        self.scrollFrame:AddChild(itemGroup)
+        CreateTableRow(self.scrollFrame, entry, i % 2 == 0)
     end
 
     -- Add summary at the bottom
@@ -334,11 +350,17 @@ end
 
 -- Create table controls (filter, limit, refresh)
 function HistoryUI:CreateTableControls(controlsGroup)
+    -- Create a top row for main controls
+    local topRow = AceGUI:Create("SimpleGroup")
+    topRow:SetFullWidth(true)
+    topRow:SetLayout("Flow")
+    controlsGroup:AddChild(topRow)
+    
     -- Limit dropdown
     local limitLabel = AceGUI:Create("Label")
     limitLabel:SetText("Show:")
     limitLabel:SetWidth(40)
-    controlsGroup:AddChild(limitLabel)
+    topRow:AddChild(limitLabel)
 
     local limitDropdown = AceGUI:Create("Dropdown")
     limitDropdown:SetWidth(80)
@@ -349,18 +371,18 @@ function HistoryUI:CreateTableControls(controlsGroup)
         [200] = "200",
         [999] = "All"
     })
-    limitDropdown:SetValue(50)
+    limitDropdown:SetValue(self.currentLimit or 50)
     limitDropdown:SetCallback("OnValueChanged", function(widget, event, value)
         self.currentLimit = value
         self:RefreshHistoryTable()
     end)
-    controlsGroup:AddChild(limitDropdown)
+    topRow:AddChild(limitDropdown)
 
     -- Filter dropdown
     local filterLabel = AceGUI:Create("Label")
     filterLabel:SetText("Filter:")
     filterLabel:SetWidth(40)
-    controlsGroup:AddChild(filterLabel)
+    topRow:AddChild(filterLabel)
 
     local filterDropdown = AceGUI:Create("Dropdown")
     filterDropdown:SetWidth(100)
@@ -370,13 +392,12 @@ function HistoryUI:CreateTableControls(controlsGroup)
         need = "Need Only",
         greed = "Greed Only"
     })
-    filterDropdown:SetValue("all")
+    filterDropdown:SetValue(self.currentFilter or "all")
     filterDropdown:SetCallback("OnValueChanged", function(widget, event, value)
         self.currentFilter = value
         self:RefreshHistoryTable()
     end)
-    controlsGroup:AddChild(filterDropdown)
-
+    topRow:AddChild(filterDropdown)
 
     -- Refresh button
     local refreshButton = AceGUI:Create("Button")
@@ -385,8 +406,7 @@ function HistoryUI:CreateTableControls(controlsGroup)
     refreshButton:SetCallback("OnClick", function()
         self:RefreshHistoryTable()
     end)
-    controlsGroup:AddChild(refreshButton)
-
+    topRow:AddChild(refreshButton)
 
     -- Clear history button
     local clearButton = AceGUI:Create("Button")
@@ -408,7 +428,110 @@ function HistoryUI:CreateTableControls(controlsGroup)
         }
         StaticPopup_Show("ULTIMATELOOT_CLEAR_HISTORY")
     end)
-    controlsGroup:AddChild(clearButton)
+    topRow:AddChild(clearButton)
+    
+    -- Create a bottom row for search
+    local bottomRow = AceGUI:Create("SimpleGroup")
+    bottomRow:SetFullWidth(true)
+    bottomRow:SetLayout("Flow")
+    controlsGroup:AddChild(bottomRow)
+    
+    -- Search box
+    local searchLabel = AceGUI:Create("Label")
+    searchLabel:SetText(L["SEARCH"] or "Search:")
+    searchLabel:SetWidth(60)
+    bottomRow:AddChild(searchLabel)
+    
+    local searchBox = AceGUI:Create("EditBox")
+    searchBox:SetWidth(200)
+    searchBox:DisableButton(true)
+    searchBox:SetCallback("OnTextChanged", function(widget, event, text)
+        self.currentSearch = text
+        self:RefreshHistoryTable()
+    end)
+    bottomRow:AddChild(searchBox)
+    
+    -- Create a third row for date filters
+    local dateRow = AceGUI:Create("SimpleGroup")
+    dateRow:SetFullWidth(true)
+    dateRow:SetLayout("Flow")
+    controlsGroup:AddChild(dateRow)
+    
+    -- Date range filters
+    local dateFilterLabel = AceGUI:Create("Label")
+    dateFilterLabel:SetText(L["DATE_RANGE"] or "Date Range:")
+    dateFilterLabel:SetWidth(80)
+    dateRow:AddChild(dateFilterLabel)
+    
+    -- Date format text
+    local dateFormatLabel = AceGUI:Create("Label")
+    dateFormatLabel:SetText("(YYYY-MM-DD)")
+    dateFormatLabel:SetWidth(95)
+    dateFormatLabel:SetColor(0.7, 0.7, 0.7)
+    dateRow:AddChild(dateFormatLabel)
+    
+    -- Start date picker
+    local startDateLabel = AceGUI:Create("Label")
+    startDateLabel:SetText(L["FROM"] or "From:")
+    startDateLabel:SetWidth(40)
+    dateRow:AddChild(startDateLabel)
+    
+    local startDateBox = AceGUI:Create("EditBox")
+    startDateBox:SetWidth(90)
+    startDateBox:DisableButton(true)
+    startDateBox:SetCallback("OnTextChanged", function(widget, event, text)
+        if text == "" then
+            self.dateFilterStart = nil
+            self:RefreshHistoryTable()
+            return
+        end
+        
+        -- Parse date in YYYY-MM-DD format
+        local year, month, day = text:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
+        if year and month and day then
+            self.dateFilterStart = { year = tonumber(year), month = tonumber(month), day = tonumber(day) }
+            self:RefreshHistoryTable()
+        end
+    end)
+    dateRow:AddChild(startDateBox)
+    
+    -- End date picker
+    local endDateLabel = AceGUI:Create("Label")
+    endDateLabel:SetText(L["TO"] or "To:")
+    endDateLabel:SetWidth(30)
+    dateRow:AddChild(endDateLabel)
+    
+    local endDateBox = AceGUI:Create("EditBox")
+    endDateBox:SetWidth(90)
+    endDateBox:DisableButton(true)
+    endDateBox:SetCallback("OnTextChanged", function(widget, event, text)
+        if text == "" then
+            self.dateFilterEnd = nil
+            self:RefreshHistoryTable()
+            return
+        end
+        
+        -- Parse date in YYYY-MM-DD format
+        local year, month, day = text:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
+        if year and month and day then
+            self.dateFilterEnd = { year = tonumber(year), month = tonumber(month), day = tonumber(day) }
+            self:RefreshHistoryTable()
+        end
+    end)
+    dateRow:AddChild(endDateBox)
+    
+    -- Reset date filter button
+    local resetDatesButton = AceGUI:Create("Button")
+    resetDatesButton:SetText(L["RESET"] or "Reset")
+    resetDatesButton:SetWidth(60)
+    resetDatesButton:SetCallback("OnClick", function()
+        startDateBox:SetText("")
+        endDateBox:SetText("")
+        self.dateFilterStart = nil
+        self.dateFilterEnd = nil
+        self:RefreshHistoryTable()
+    end)
+    dateRow:AddChild(resetDatesButton)
 end
 
 -- Refresh function for external calls
