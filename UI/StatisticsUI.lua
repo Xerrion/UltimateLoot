@@ -46,7 +46,7 @@ function StatisticsUI:CreateStatsTab(container)
             local greedPercent = (greedCount / total) * 100
 
             local rollBreakdown = string.format(
-                "|cffff0000Pass:|r %d (%.1f%%)\n|cff0080ffNeed:|r %d (%.1f%%)\n|cffffaa00Greed:|r %d (%.1f%%)",
+                L["ROLL_BREAKDOWN_FORMAT"],
                 passCount, passPercent, needCount, needPercent, greedCount, greedPercent
             )
 
@@ -56,7 +56,7 @@ function StatisticsUI:CreateStatsTab(container)
             rollTypeGroup:AddChild(rollLabel)
         else
             local noDataLabel = AceGUI:Create("Label")
-            noDataLabel:SetText("No roll data available")
+            noDataLabel:SetText(L["NO_ROLL_DATA"])
             noDataLabel:SetFullWidth(true)
             rollTypeGroup:AddChild(noDataLabel)
         end
@@ -99,12 +99,12 @@ function StatisticsUI:CreateStatsTab(container)
 
         if totalForQuality > 0 then
             local percentage = (totalForQuality / (stats.totalHandled or 1)) * 100
-            local breakdown = string.format("P:%d N:%d G:%d", rollData.pass, rollData.need, rollData.greed)
-            qualityLabel:SetText(string.format("%s: %d (%.1f%%) - %s", qualityName, totalForQuality, percentage,
+            local breakdown = string.format(L["ROLL_STATS_FORMAT"], rollData.pass, rollData.need, rollData.greed)
+            qualityLabel:SetText(string.format(L["QUALITY_STATS_FORMAT"], qualityName, totalForQuality, percentage,
                 breakdown))
             SetQualityColor(qualityLabel, quality)
         else
-            qualityLabel:SetText(string.format("%s: 0", qualityName))
+            qualityLabel:SetText(string.format(L["QUALITY_NO_DATA_FORMAT"], qualityName))
             qualityLabel:SetColor(0.5, 0.5, 0.5) -- Gray out zero counts
         end
 

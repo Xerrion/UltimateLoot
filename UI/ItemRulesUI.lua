@@ -340,10 +340,10 @@ function ItemRulesUI:CreateRulesList(container)
                 ruleFrame:AddChild(noteGroup)
                 
                 -- Note display or placeholder
-                local noteText = rule.note or "No note"
+                local noteText = rule.note or L["NO_NOTE"]
                 local noteColor = rule.note and {0.6, 0.8, 0.9} or {0.5, 0.5, 0.5}
                 local noteLabel = AceGUI:Create("InteractiveLabel")
-                noteLabel:SetText(rule.note and "Note: " .. rule.note or "Add note...")
+                noteLabel:SetText(rule.note and L["NOTE_PREFIX"] .. rule.note or L["ADD_NOTE"])
                 noteLabel:SetWidth(180)
                 noteLabel:SetColor(unpack(noteColor))
                 
@@ -351,7 +351,7 @@ function ItemRulesUI:CreateRulesList(container)
                 noteLabel:SetCallback("OnClick", function()
                     -- Create popup for editing note
                     StaticPopupDialogs["ULTIMATELOOT_EDIT_NOTE"] = {
-                        text = "Edit note for " .. (rule.link or rule.name or "item"),
+                        text = L["EDIT_NOTE_FOR"] .. (rule.link or rule.name or L["UNKNOWN_ITEM"]),
                         button1 = L["OKAY"] or "Okay",
                         button2 = L["CANCEL"] or "Cancel",
                         hasEditBox = true,

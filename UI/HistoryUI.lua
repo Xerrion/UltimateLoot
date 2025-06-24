@@ -6,10 +6,10 @@ local AceGUI = E.Libs.AceGUI
 
 -- Table column configuration
 local COLUMNS = {
-    { key = "item",     label = "Item",                      width = 280 },
-    { key = "quality",  label = "Quality",                   width = 90 },
-    { key = "decision", label = L["DECISION"] or "Decision", width = 80 },
-    { key = "date",     label = "Date",                      width = 140 }
+    { key = "item",     label = L["ITEM_COLUMN"],    width = 280 },
+    { key = "quality",  label = L["QUALITY_COLUMN"], width = 90 },
+    { key = "decision", label = L["DECISION"],       width = 80 },
+    { key = "date",     label = L["DATE_COLUMN"],    width = 140 }
 }
 
 -- Helper function to get quality color and apply it to a widget
@@ -137,7 +137,7 @@ local function CreateTableRow(scrollFrame, rowData, isEven)
 
     -- Quality column
     local qualityLabel = AceGUI:Create("Label")
-    qualityLabel:SetText(rowData.qualityName or "Unknown")
+    qualityLabel:SetText(rowData.qualityName or L["UNKNOWN"])
     qualityLabel:SetWidth(COLUMNS[2].width)
     qualityLabel:SetColor(r, g, b)
     rowFrame:AddChild(qualityLabel)
@@ -153,7 +153,7 @@ local function CreateTableRow(scrollFrame, rowData, isEven)
 
     -- Date column
     local dateLabel = AceGUI:Create("Label")
-    dateLabel:SetText(rowData.date or "Unknown")
+    dateLabel:SetText(rowData.date or L["UNKNOWN"])
     dateLabel:SetWidth(COLUMNS[4].width)
     dateLabel:SetColor(0.8, 0.8, 0.8)
     rowFrame:AddChild(dateLabel)
@@ -337,8 +337,8 @@ function HistoryUI:AddTableSummary()
     end
 
     -- Simple summary without textures
-    local filterText = filter == "all" and "All Types" or (filter:gsub("^%l", string.upper) .. " Only")
-    local summaryText = string.format("Showing %d items (%s) | Pass: %d | Need: %d | Greed: %d",
+    local filterText = filter == "all" and L["ALL_TYPES"] or string.format(L["FILTER_SUMMARY"], filter:gsub("^%l", string.upper))
+    local summaryText = string.format(L["SHOWING_ITEMS_SUMMARY"],
         #history, filterText, counts.pass, counts.need, counts.greed)
 
     local summaryLabel = AceGUI:Create("Label")
@@ -358,18 +358,18 @@ function HistoryUI:CreateTableControls(controlsGroup)
     
     -- Limit dropdown
     local limitLabel = AceGUI:Create("Label")
-    limitLabel:SetText("Show:")
+    limitLabel:SetText(L["SHOW_LABEL"])
     limitLabel:SetWidth(40)
     topRow:AddChild(limitLabel)
 
     local limitDropdown = AceGUI:Create("Dropdown")
     limitDropdown:SetWidth(80)
     limitDropdown:SetList({
-        [25] = "25",
-        [50] = "50",
-        [100] = "100",
-        [200] = "200",
-        [999] = "All"
+        [25] = L["LIMIT_25"],
+        [50] = L["LIMIT_50"],
+        [100] = L["LIMIT_100"],
+        [200] = L["LIMIT_200"],
+        [999] = L["LIMIT_ALL"]
     })
     limitDropdown:SetValue(self.currentLimit or 50)
     limitDropdown:SetCallback("OnValueChanged", function(widget, event, value)
@@ -380,17 +380,17 @@ function HistoryUI:CreateTableControls(controlsGroup)
 
     -- Filter dropdown
     local filterLabel = AceGUI:Create("Label")
-    filterLabel:SetText("Filter:")
+    filterLabel:SetText(L["FILTER_LABEL"])
     filterLabel:SetWidth(40)
     topRow:AddChild(filterLabel)
 
     local filterDropdown = AceGUI:Create("Dropdown")
     filterDropdown:SetWidth(100)
     filterDropdown:SetList({
-        all = "All",
-        pass = "Pass Only",
-        need = "Need Only",
-        greed = "Greed Only"
+        all = L["FILTER_ALL"],
+        pass = L["FILTER_PASS_ONLY"],
+        need = L["FILTER_NEED_ONLY"],
+        greed = L["FILTER_GREED_ONLY"]
     })
     filterDropdown:SetValue(self.currentFilter or "all")
     filterDropdown:SetCallback("OnValueChanged", function(widget, event, value)
@@ -414,7 +414,7 @@ function HistoryUI:CreateTableControls(controlsGroup)
     clearButton:SetWidth(100)
     clearButton:SetCallback("OnClick", function()
         StaticPopupDialogs["ULTIMATELOOT_CLEAR_HISTORY"] = {
-            text = "Are you sure you want to clear the roll history?\n\nThis cannot be undone.",
+            text = L["CLEAR_HISTORY_CONFIRM"],
             button1 = L["YES"],
             button2 = L["NO"],
             OnAccept = function()
@@ -465,7 +465,7 @@ function HistoryUI:CreateTableControls(controlsGroup)
     
     -- Date format text
     local dateFormatLabel = AceGUI:Create("Label")
-    dateFormatLabel:SetText("(YYYY-MM-DD)")
+    dateFormatLabel:SetText(L["DATE_FORMAT"])
     dateFormatLabel:SetWidth(95)
     dateFormatLabel:SetColor(0.7, 0.7, 0.7)
     dateRow:AddChild(dateFormatLabel)
