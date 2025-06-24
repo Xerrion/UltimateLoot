@@ -89,6 +89,30 @@ function ItemRulesUI:CreateItemRulesTab(container)
     ruleTypeDropdown:SetValue("whitelist")
     ruleTypeDropdown:SetWidth(250)
     addGroup:AddChild(ruleTypeDropdown)
+    
+    -- Advanced options section
+    local optionsGroup = AceGUI:Create("SimpleGroup")
+    optionsGroup:SetFullWidth(true)
+    optionsGroup:SetLayout("Flow")
+    addGroup:AddChild(optionsGroup)
+    
+    -- Pattern matching checkbox
+    local patternMatchCheck = AceGUI:Create("CheckBox")
+    patternMatchCheck:SetLabel(L["USE_PATTERN"] or "Use pattern matching")
+    patternMatchCheck:SetDescription(L["USE_PATTERN_DESC"] or "Use Lua pattern matching for more flexible item name rules")
+    patternMatchCheck:SetValue(false)
+    patternMatchCheck:SetWidth(200)
+    optionsGroup:AddChild(patternMatchCheck)
+    
+    -- Note field
+    local noteInput = AceGUI:Create("EditBox")
+    noteInput:SetLabel(L["RULE_NOTE"] or "Rule Note")
+    noteInput:SetText("")
+    noteInput:SetWidth(300)
+    noteInput:SetCallback("OnTextChanged", function(widget, event, text)
+        -- Optional validation
+    end)
+    optionsGroup:AddChild(noteInput)
 
     -- Add rule button
     local addButton = AceGUI:Create("Button")
@@ -97,6 +121,12 @@ function ItemRulesUI:CreateItemRulesTab(container)
     addButton:SetCallback("OnClick", function()
         local itemText = itemInput:GetText()
         local ruleType = ruleTypeDropdown:GetValue()
+        local usePattern = patternMatchCheck:GetValue()
+        local note = noteInput:GetText()
+        
+        if not note or note:trim() == "" then
+            note = nil  -- Don't store empty notes
+        end
 
         if not itemText or itemText:trim() == "" then
             E:Print("Please enter an item name or link.")
@@ -107,6 +137,15 @@ function ItemRulesUI:CreateItemRulesTab(container)
             E:Print("Please select a rule type.")
             return
         end
+        
+        -- Check pattern validity if pattern matching is enabled
+        if usePattern then
+            local success = pcall(function() return string.match("Test", itemText) end)
+            if not success then
+                E:Print("The pattern is not valid. Please check your syntax.")
+                return
+            end
+        end
 
         -- Parse item link or name
         local itemName, itemLink, itemId
@@ -115,17 +154,30 @@ function ItemRulesUI:CreateItemRulesTab(container)
             itemLink = itemText
             itemName = itemText:match("%[(.-)%]") or "Unknown Item"
             itemId = itemText:match("Hitem:(%d+)")
+            
+            -- Pattern matching doesn't make sense with links
+            usePattern = false
         else
             -- It's just a name
             itemName = itemText
         end
 
-        -- Add the rule
-        local success, message = E.ItemRules:AddItemRule(ruleType, itemName, itemLink, itemId)
+        -- Add the rule with options
+        local options = {
+            usePattern = usePattern,
+            note = note
+        }
+        
+        local success, message = E.ItemRules:AddItemRule(ruleType, itemName, itemLink, itemId, options)
 
         if success then
-            E:Print(string.format("Added %s rule for %s", ruleType, itemName))
+            E:Print(string.format("Added %s rule for %s%s", 
+                ruleType, 
+                itemName, 
+                usePattern and " (pattern matching)" or ""))
             itemInput:SetText("")
+            noteInput:SetText("")
+            patternMatchCheck:SetValue(false)
             RefreshRulesDisplay(self)
         else
             E:Print(string.format("Failed to add rule: %s", message))
@@ -139,6 +191,8 @@ function ItemRulesUI:CreateItemRulesTab(container)
     clearButton:SetWidth(80)
     clearButton:SetCallback("OnClick", function()
         itemInput:SetText("")
+        noteInput:SetText("")
+        patternMatchCheck:SetValue(false)
     end)
     addGroup:AddChild(clearButton)
 
@@ -252,8 +306,14 @@ function ItemRulesUI:CreateRulesList(container)
                 -- Item name/link
                 local itemLabel = AceGUI:Create("InteractiveLabel")
                 local displayText = rule.link or rule.name or "Unknown Item"
+                
+                -- Add pattern indicator if it's a pattern match rule
+                if rule.usePattern then
+                    displayText = "|cffff8c00[Pattern]|r " .. displayText
+                end
+                
                 itemLabel:SetText(displayText)
-                itemLabel:SetWidth(300)
+                itemLabel:SetWidth(240)
                 if rule.link then
                     itemLabel:SetCallback("OnClick", function()
                         -- Copy item link to chat
@@ -268,9 +328,18 @@ function ItemRulesUI:CreateRulesList(container)
                 if rule.itemId then
                     local idLabel = AceGUI:Create("Label")
                     idLabel:SetText("ID: " .. rule.itemId)
-                    idLabel:SetWidth(80)
+                    idLabel:SetWidth(60)
                     idLabel:SetColor(0.7, 0.7, 0.7)
                     ruleFrame:AddChild(idLabel)
+                end
+                
+                -- Note if available
+                if rule.note then
+                    local noteLabel = AceGUI:Create("Label")
+                    noteLabel:SetText("Note: " .. rule.note)
+                    noteLabel:SetWidth(200)
+                    noteLabel:SetColor(0.6, 0.8, 0.9)
+                    ruleFrame:AddChild(noteLabel)
                 end
 
                 -- Remove button
