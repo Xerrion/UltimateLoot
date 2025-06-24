@@ -12,127 +12,45 @@ local COLUMNS = {
     { key = "date",     label = L["DATE_COLUMN"],    width = 140 }
 }
 
--- Helper function to get quality color and apply it to a widget
-local function SetQualityColor(widget, quality)
-    local r, g, b = unpack(E.Tracker:GetQualityColor(quality))
-    widget:SetColor(r, g, b)
-    return r, g, b
-end
+-- Using UIUtils module for shared functionality
 
--- Helper function to get roll decision color
-local function GetRollDecisionColor(rollTypeName)
-    if rollTypeName == "need" then
-        return 0.12, 1, 0    -- Green (like Uncommon items)
-    elseif rollTypeName == "greed" then
-        return 0, 0.44, 0.87 -- Blue (like Rare items)
-    else                     -- "pass" or nil (legacy)
-        return 0.8, 0.8, 0.8 -- Light gray
-    end
-end
-
--- Helper function to get roll decision display text
-local function GetRollDecisionText(rollTypeName)
-    if rollTypeName == "need" then
-        return L["NEED_ROLLS"] or "Need"
-    elseif rollTypeName == "greed" then
-        return L["GREED_ROLLS"] or "Greed"
-    else -- "pass" or nil (legacy)
-        return L["PASS_ROLLS"] or "Pass"
-    end
-end
-
--- Create table header row with sorting support
+-- Create table header row with sorting support - using UIUtils
 local function CreateTableHeader(scrollFrame, sortColumn, sortDirection)
-    local headerFrame = AceGUI:Create("SimpleGroup")
-    headerFrame:SetFullWidth(true)
-    headerFrame:SetLayout("Flow")
-
-    -- Create header background (WoW 3.3.5a compatible)
-    local headerBg = headerFrame.frame:CreateTexture(nil, "BACKGROUND")
-    headerBg:SetAllPoints(headerFrame.frame)
-    headerBg:SetTexture(0.2, 0.2, 0.3, 0.8)
-
-    for _, column in ipairs(COLUMNS) do
-        -- Create an interactive label for headers to support clicking
-        local header = AceGUI:Create("InteractiveLabel")
-        
-        -- Add sort indicators if this is the currently sorted column
-        local headerText = column.label
-        if sortColumn == column.key then
-            headerText = headerText .. (sortDirection == "asc" and " \226\134\145" or " \226\134\147")
-        end
-        
-        header:SetText(headerText)
-        header:SetWidth(column.width)
-        header:SetFontObject(GameFontNormalLarge)
-        header:SetColor(1, 1, 1)
-        
-        -- Make headers clickable for sorting
-        header:SetCallback("OnClick", function()
+    local sortInfo = {
+        column = sortColumn,
+        direction = sortDirection,
+        callback = function(columnKey)
             -- Toggle sort direction if clicking the same column
-            if E.HistoryUI.sortColumn == column.key then
+            if E.HistoryUI.sortColumn == columnKey then
                 E.HistoryUI.sortDirection = E.HistoryUI.sortDirection == "asc" and "desc" or "asc"
             else
                 -- New column becomes the sort column with default desc order
-                E.HistoryUI.sortColumn = column.key
+                E.HistoryUI.sortColumn = columnKey
                 E.HistoryUI.sortDirection = "desc"
             end
             
             -- Refresh the table with new sorting
             E.HistoryUI:RefreshHistoryTable()
-        end)
-        
-        -- Add hover effect to indicate clickable headers
-        header:SetCallback("OnEnter", function(widget)
-            widget:SetColor(1, 1, 0) -- Yellow on hover
-        end)
-        
-        header:SetCallback("OnLeave", function(widget)
-            widget:SetColor(1, 1, 1) -- White when not hovering
-        end)
-        
-        headerFrame:AddChild(header)
-    end
-
-    scrollFrame:AddChild(headerFrame)
+        end
+    }
+    
+    E.UIUtils:CreateTableHeader(scrollFrame, COLUMNS, sortInfo)
 end
 
--- Create table row with alternating background
+-- Create table row with alternating background - using UIUtils with custom row content
 local function CreateTableRow(scrollFrame, rowData, isEven)
-    local rowFrame = AceGUI:Create("SimpleGroup")
-    rowFrame:SetFullWidth(true)
-    rowFrame:SetLayout("Flow")
-
-    -- Add alternating row background (WoW 3.3.5a compatible)
-    local rowBg = rowFrame.frame:CreateTexture(nil, "BACKGROUND")
-    rowBg:SetAllPoints(rowFrame.frame)
-    if isEven then
-        rowBg:SetTexture(0.1, 0.1, 0.15, 0.3)
-    else
-        rowBg:SetTexture(0.05, 0.05, 0.1, 0.5)
-    end
+    local rowFrame = E.UIUtils:CreateTableRow(scrollFrame, isEven)
 
     -- Item column
     local itemLabel = AceGUI:Create("InteractiveLabel")
     itemLabel:SetText(rowData.itemLink or rowData.itemName)
     itemLabel:SetWidth(COLUMNS[1].width)
-    local r, g, b = SetQualityColor(itemLabel, rowData.quality)
+    local r, g, b = E.UIUtils:SetQualityColor(itemLabel, rowData.quality)
 
     -- Add tooltip for item links
-    itemLabel:SetCallback("OnEnter", function(widget)
-        if rowData.itemLink and rowData.itemLink:match("|H.-|h") then
-            GameTooltip:SetOwner(widget.frame, "ANCHOR_CURSOR")
-            local success = pcall(GameTooltip.SetHyperlink, GameTooltip, rowData.itemLink)
-            if success then
-                GameTooltip:Show()
-            else
-                GameTooltip:Hide()
-            end
-        end
-    end)
-    itemLabel:SetCallback("OnLeave", function()
-        GameTooltip:Hide()
-    end)
+    if rowData.itemLink then
+        E.UIUtils:AddItemTooltip(itemLabel, rowData.itemLink)
+    end
     rowFrame:AddChild(itemLabel)
 
     -- Quality column
@@ -145,9 +63,9 @@ local function CreateTableRow(scrollFrame, rowData, isEven)
     -- Decision column
     local decisionLabel = AceGUI:Create("Label")
     local rollTypeName = rowData.rollTypeName or "pass" -- Default to "pass" for legacy entries
-    decisionLabel:SetText(GetRollDecisionText(rollTypeName))
+    decisionLabel:SetText(E.UIUtils:GetRollDecisionText(rollTypeName))
     decisionLabel:SetWidth(COLUMNS[3].width)
-    local dr, dg, db = GetRollDecisionColor(rollTypeName)
+    local dr, dg, db = E.UIUtils:GetRollDecisionColor(rollTypeName)
     decisionLabel:SetColor(dr, dg, db)
     rowFrame:AddChild(decisionLabel)
 
@@ -157,8 +75,6 @@ local function CreateTableRow(scrollFrame, rowData, isEven)
     dateLabel:SetWidth(COLUMNS[4].width)
     dateLabel:SetColor(0.8, 0.8, 0.8)
     rowFrame:AddChild(dateLabel)
-
-    scrollFrame:AddChild(rowFrame)
 end
 
 function HistoryUI:CreateHistoryTab(container)
@@ -172,12 +88,8 @@ function HistoryUI:CreateHistoryTab(container)
     -- Add table controls
     self:CreateTableControls(controlsGroup)
 
-    -- History scroll frame - use Flow layout like original
-    local scrollFrame = AceGUI:Create("ScrollFrame")
-    scrollFrame:SetLayout("Flow")
-    scrollFrame:SetFullWidth(true)
-    scrollFrame:SetFullHeight(true)
-    container:AddChild(scrollFrame)
+    -- History scroll frame - using UIUtils
+    local scrollFrame = E.UIUtils:CreateScrollFrame(container)
 
     -- Store references for refreshing
     self.scrollFrame = scrollFrame
@@ -295,10 +207,7 @@ function HistoryUI:RefreshHistoryTable()
     CreateTableHeader(self.scrollFrame, self.sortColumn, self.sortDirection)
 
     if #history == 0 then
-        local label = AceGUI:Create("Label")
-        label:SetText(L["NO_ITEMS_PASSED"] or "No items have been handled yet.")
-        label:SetFullWidth(true)
-        self.scrollFrame:AddChild(label)
+        E.UIUtils:ShowEmptyState(self.scrollFrame, L["NO_ITEMS_PASSED"])
         return
     end
 
@@ -413,20 +322,10 @@ function HistoryUI:CreateTableControls(controlsGroup)
     clearButton:SetText(L["CLEAR_HISTORY"])
     clearButton:SetWidth(100)
     clearButton:SetCallback("OnClick", function()
-        StaticPopupDialogs["ULTIMATELOOT_CLEAR_HISTORY"] = {
-            text = L["CLEAR_HISTORY_CONFIRM"],
-            button1 = L["YES"],
-            button2 = L["NO"],
-            OnAccept = function()
-                E.Tracker:ClearHistory()
-                self:RefreshHistoryTable()
-            end,
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-            preferredIndex = 3,
-        }
-        StaticPopup_Show("ULTIMATELOOT_CLEAR_HISTORY")
+        E.UIUtils:ShowConfirmDialog("ULTIMATELOOT_CLEAR_HISTORY", L["CLEAR_HISTORY_CONFIRM"], function()
+            E.Tracker:ClearHistory()
+            self:RefreshHistoryTable()
+        end)
     end)
     topRow:AddChild(clearButton)
     

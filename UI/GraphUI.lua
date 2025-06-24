@@ -12,11 +12,7 @@ function GraphUI:CreateGraphTab(container)
     end
 
     if maxValue == 0 then
-        local label = AceGUI:Create("Label")
-        label:SetText(L["NO_DATA_TO_DISPLAY"])
-        label:SetFullWidth(true)
-        label:SetFontObject(GameFontNormalLarge)
-        container:AddChild(label)
+        E.UIUtils:ShowEmptyState(container, L["NO_DATA_TO_DISPLAY"])
         return
     end
 

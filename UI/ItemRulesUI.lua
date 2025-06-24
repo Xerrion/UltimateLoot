@@ -4,12 +4,7 @@ local ItemRulesUI = E:NewModule("ItemRulesUI")
 E.ItemRulesUI = ItemRulesUI
 local AceGUI = E.Libs.AceGUI
 
--- Helper function to get quality color and apply it to a widget
-local function SetQualityColor(widget, quality)
-    local r, g, b = unpack(E.Tracker:GetQualityColor(quality))
-    widget:SetColor(r, g, b)
-    return r, g, b
-end
+-- Using UIUtils for shared functionality
 
 -- Helper function to refresh the rules display
 local function RefreshRulesDisplay(self)
@@ -25,12 +20,8 @@ function ItemRulesUI:CreateItemRulesTab(container)
     -- Clear container to ensure clean refresh
     container:ReleaseChildren()
 
-    -- Main scroll frame
-    local scrollFrame = AceGUI:Create("ScrollFrame")
-    scrollFrame:SetLayout("Flow")
-    scrollFrame:SetFullWidth(true)
-    scrollFrame:SetFullHeight(true)
-    container:AddChild(scrollFrame)
+    -- Main scroll frame using UIUtils
+    local scrollFrame = E.UIUtils:CreateScrollFrame(container)
 
     -- Item Rules Enable/Disable
     local enableGroup = AceGUI:Create("InlineGroup")
@@ -222,23 +213,13 @@ function ItemRulesUI:CreateItemRulesTab(container)
     clearAllButton:SetText(L["CLEAR_ALL_RULES"])
     clearAllButton:SetWidth(130)
     clearAllButton:SetCallback("OnClick", function()
-        StaticPopupDialogs["ULTIMATELOOT_CLEAR_ALL_RULES"] = {
-            text = L["CLEAR_ALL_RULES_CONFIRM"],
-            button1 = L["YES"],
-            button2 = L["NO"],
-            OnAccept = function()
-                if E.ItemRules then
-                    E.ItemRules:ClearRules()
-                    E:Print("All item rules cleared.")
-                    RefreshRulesDisplay(self)
-                end
-            end,
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-            preferredIndex = 3,
-        }
-        StaticPopup_Show("ULTIMATELOOT_CLEAR_ALL_RULES")
+        E.UIUtils:ShowConfirmDialog("ULTIMATELOOT_CLEAR_ALL_RULES", L["CLEAR_ALL_RULES_CONFIRM"], function()
+            if E.ItemRules then
+                E.ItemRules:ClearRules()
+                E:Print("All item rules cleared.")
+                RefreshRulesDisplay(self)
+            end
+        end)
     end)
     managementGroup:AddChild(clearAllButton)
 end
@@ -264,10 +245,7 @@ function ItemRulesUI:CreateRulesList(container)
         noRulesGroup:SetLayout("Flow")
         container:AddChild(noRulesGroup)
 
-        local noRulesLabel = AceGUI:Create("Label")
-        noRulesLabel:SetText(L["NO_RULES_CONFIGURED"])
-        noRulesLabel:SetFullWidth(true)
-        noRulesGroup:AddChild(noRulesLabel)
+        E.UIUtils:ShowEmptyState(noRulesGroup, L["NO_RULES_CONFIGURED"])
         return
     end
 
