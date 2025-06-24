@@ -1,5 +1,6 @@
 local E = unpack(select(2, ...)) --Import: Engine, Locales, ProfileDB
 local L = E.Libs.AceLocale:NewLocale(E._name, "deDE")
+if not L then return end
 
 -- Addon related strings
 L["ADDON_LOADED"] = "%s wurde geladen."
@@ -68,9 +69,7 @@ L["DATE_FORMAT"] = "(JJJJ-MM-TT)"
 
 -- Statistics breakdown
 L["NO_ROLL_DATA"] = "Keine Würfeldaten verfügbar"
-L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Weitergeben:|r %d (%.1f%%)
-|cff0080ffBedarf:|r %d (%.1f%%)
-|cffffaa00Gier:|r %d (%.1f%%)"
+L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Weitergeben:|r %d (%.1f%%)\n|cff0080ffBedarf:|r %d (%.1f%%)\n|cffffaa00Gier:|r %d (%.1f%%)"
 L["QUALITY_STATS_FORMAT"] = "%s: %d (%.1f%%) - %s"
 L["QUALITY_NO_DATA_FORMAT"] = "%s: 0"
 L["ROLL_STATS_FORMAT"] = "W:%d B:%d G:%d"

@@ -18,8 +18,7 @@ do
 
     Engine[2] = Engine[1].Libs.AceLocale:GetLocale(Engine[1]._name, gameLocale)
 end
-
-local E, L, P = unpack(Engine) --Import: Engine, Locales, ProfileDB
+local E, L, P = unpack(select(2, ...)) --Import: Engine, Locales, ProfileDB
 
 -- Constants
 E.myname = UnitName("player")

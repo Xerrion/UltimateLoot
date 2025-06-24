@@ -130,9 +130,7 @@ L["TOTAL_ROLLS_24H"] = "Total rolls in last 24 hours: %d"
 
 -- Statistics breakdown
 L["NO_ROLL_DATA"] = "No roll data available"
-L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Pass:|r %d (%.1f%%)
-|cff0080ffNeed:|r %d (%.1f%%)
-|cffffaa00Greed:|r %d (%.1f%%)"
+L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Pass:|r %d (%.1f%%)\n|cff0080ffNeed:|r %d (%.1f%%)\n|cffffaa00Greed:|r %d (%.1f%%)"
 L["QUALITY_STATS_FORMAT"] = "%s: %d (%.1f%%) - %s"
 L["QUALITY_NO_DATA_FORMAT"] = "%s: 0"
 L["ROLL_STATS_FORMAT"] = "P:%d N:%d G:%d"
