@@ -12,10 +12,100 @@ local AceGUI = E.Libs.AceGUI
     and provide consistent UI behavior across the addon.
 ]]
 
+-- Error handling utilities
+local ERROR_HANDLING_ENABLED = true  -- Can be toggled for debugging
+
+-- Safe function call wrapper
+function UIUtils:SafeCall(funcName, func, ...)
+    if not ERROR_HANDLING_ENABLED then
+        return true, func(...)
+    end
+    
+    local success, result = pcall(func, ...)
+    if not success then
+        -- Log the error
+        E:DebugPrint("[ERROR] UIUtils: %s failed - %s", funcName or "Function", result or "Unknown error")
+        -- Display a user-friendly message if in debug mode
+        if E.db and E.db.debug_mode then
+            E:Print("|cffff0000Error in " .. (funcName or "function") .. ":|r " .. (result or "Unknown error"))
+        end
+        return false, result
+    end
+    return true, result
+end
+
+-- Create UI elements safely
+function UIUtils:SafeCreateWidget(widgetType, errorCallback)
+    local widget
+    
+    local success, result = self:SafeCall("CreateWidget(" .. widgetType .. ")", function()
+        return AceGUI:Create(widgetType)
+    end)
+    
+    if success then
+        widget = result
+        if not widget then
+            E:DebugPrint("[ERROR] UIUtils: Failed to create widget of type %s", widgetType)
+            if errorCallback then
+                errorCallback("Failed to create widget of type " .. widgetType)
+            end
+        end
+    else
+        if errorCallback then
+            errorCallback(result)
+        end
+    end
+    
+    return widget
+end
+
+-- Safe error display
+function UIUtils:ShowError(container, errorMsg)
+    E:DebugPrint("[ERROR] UIUtils: %s", errorMsg)
+    
+    local errorGroup = self:SafeCreateWidget("InlineGroup")
+    if errorGroup then
+        errorGroup:SetTitle("Error")
+        errorGroup:SetFullWidth(true)
+        errorGroup:SetLayout("Flow")
+        
+        local errorLabel = self:SafeCreateWidget("Label")
+        if errorLabel then
+            errorLabel:SetText("|cffff0000Error:|r " .. errorMsg)
+            errorLabel:SetFullWidth(true)
+            errorGroup:AddChild(errorLabel)
+        end
+        
+        if container then
+            container:AddChild(errorGroup)
+        end
+        
+        return errorGroup
+    end
+    
+    return nil
+end
+
 -- Function to set quality colors on widgets
 function UIUtils:SetQualityColor(widget, quality)
-    local r, g, b = unpack(E.Tracker:GetQualityColor(quality))
-    widget:SetColor(r, g, b)
+    if not widget then
+        E:DebugPrint("[ERROR] UIUtils: Cannot set quality color - widget is nil")
+        return 1, 1, 1 -- Default white
+    end
+    
+    local r, g, b = 1, 1, 1 -- Default white
+    local success, colors = self:SafeCall("GetQualityColor", function()
+        return E.Tracker:GetQualityColor(quality)
+    end)
+    
+    if success and colors then 
+        r, g, b = unpack(colors)
+    end
+    
+    self:SafeCall("SetWidgetColor", function()
+        widget:SetColor(r, g, b)
+    end)
+    
     return r, g, b
 end
 
@@ -74,27 +164,58 @@ end
 
 -- Show empty state message
 function UIUtils:ShowEmptyState(container, message)
-    local label = AceGUI:Create("Label")
-    label:SetText(message)
-    label:SetFullWidth(true)
-    label:SetFontObject(GameFontNormalLarge)
-    container:AddChild(label)
+    if not container then
+        E:DebugPrint("[ERROR] UIUtils: Cannot show empty state - container is nil")
+        return nil
+    end
+    
+    local label = self:SafeCreateWidget("Label")
+    if not label then
+        E:DebugPrint("[ERROR] UIUtils: Failed to create label for empty state")
+        return nil
+    end
+    
+    self:SafeCall("SetEmptyStateText", function()
+        label:SetText(message or L["NO_DATA_TO_DISPLAY"])
+        label:SetFullWidth(true)
+        label:SetFontObject(GameFontNormalLarge)
+        container:AddChild(label)
+    end)
+    
     return label
 end
 
 -- Create confirmation dialog
 function UIUtils:ShowConfirmDialog(dialogName, message, onAccept)
-    StaticPopupDialogs[dialogName] = {
-        text = message,
-        button1 = L["YES"],
-        button2 = L["NO"],
-        OnAccept = onAccept,
-        timeout = 0,
-        whileDead = true,
-        hideOnEscape = true,
-        preferredIndex = 3,
-    }
-    StaticPopup_Show(dialogName)
+    if not dialogName or dialogName == "" then
+        E:DebugPrint("[ERROR] UIUtils: Cannot show confirmation dialog - invalid dialog name")
+        return false
+    end
+    
+    if not message then
+        message = "Are you sure?"
+        E:DebugPrint("[WARNING] UIUtils: No message provided for confirmation dialog")
+    end
+    
+    local success = self:SafeCall("CreateConfirmDialog", function()
+        StaticPopupDialogs[dialogName] = {
+            text = message,
+            button1 = L["YES"],
+            button2 = L["NO"],
+            OnAccept = function()
+                if onAccept then
+                    self:SafeCall("DialogAcceptHandler", onAccept)
+                end
+            end,
+            timeout = 0,
+            whileDead = true,
+            hideOnEscape = true,
+            preferredIndex = 3,
+        }
+        StaticPopup_Show(dialogName)
+    end)
+    
+    return success
 end
 
 -- Create table header row with sorting support

@@ -90,15 +90,28 @@ function HistoryUI:CreateHistoryTab(container)
 
     -- History scroll frame - using UIUtils
     local scrollFrame = E.UIUtils:CreateScrollFrame(container)
-
+    
     -- Store references for refreshing
     self.scrollFrame = scrollFrame
     self.currentLimit = 50     -- Default to showing 50 items
     self.currentFilter = "all" -- Default to showing all types
+    self.visibleRows = 15      -- Estimated number of visible rows
+    self.rowHeight = 30        -- Estimated height of each row
+    self.currentOffset = 0     -- Current scroll offset
     
     -- Initialize sorting properties
     self.sortColumn = "date"  -- Default sort by date
     self.sortDirection = "desc" -- Default newest first
+    
+    -- Add scroll event handler to handle virtualized rows
+    self.scrollFrame.frame:SetScript("OnScrollRangeChanged", function()
+        self:UpdateVisibleRows()
+    end)
+    
+    self.scrollFrame.frame:SetScript("OnVerticalScroll", function(_, offset)
+        self.currentOffset = math.floor(offset / self.rowHeight)
+        self:UpdateVisibleRows()
+    end)
 
     -- Populate the table
     self:RefreshHistoryTable()
@@ -145,28 +158,15 @@ function HistoryUI:RefreshHistoryTable()
         endTimestamp = endTimestamp + (24*60*60) - 1 -- End of the day (23:59:59)
     end
 
+    -- Apply filters in a single pass for performance
     for _, entry in ipairs(allHistory) do
         local rollType = entry.rollTypeName or "pass"
-        local matchesFilter = filter == "all" or filter == rollType
-        local matchesSearch = true
-        local matchesDateRange = true
         
-        -- Apply search filter if we have search text
-        if searchText ~= "" then
-            local itemName = (entry.itemName or ""):lower()
-            matchesSearch = itemName:find(searchText, 1, true) ~= nil
-        end
-        
-        -- Apply date range filter if set
-        if startTimestamp and entry.timestamp and entry.timestamp < startTimestamp then
-            matchesDateRange = false
-        end
-        
-        if endTimestamp and entry.timestamp and entry.timestamp > endTimestamp then
-            matchesDateRange = false
-        end
-        
-        if matchesFilter and matchesSearch and matchesDateRange then
+        -- Check all filter conditions at once to avoid unnecessary operations
+        if (filter == "all" or filter == rollType) and
+           (searchText == "" or ((entry.itemName or ""):lower():find(searchText, 1, true) ~= nil)) and
+           (not startTimestamp or not entry.timestamp or entry.timestamp >= startTimestamp) and
+           (not endTimestamp or not entry.timestamp or entry.timestamp <= endTimestamp) then
             table.insert(history, entry)
         end
     end
@@ -202,6 +202,9 @@ function HistoryUI:RefreshHistoryTable()
             end
         end)
     end
+    
+    -- Store the filtered and sorted history for virtual scrolling
+    self.filteredHistory = history
 
     -- Add proper table header with sorting indicators
     CreateTableHeader(self.scrollFrame, self.sortColumn, self.sortDirection)
@@ -211,30 +214,67 @@ function HistoryUI:RefreshHistoryTable()
         return
     end
 
-    -- Create table entries with consistent styling
-    for i, entry in ipairs(history) do
-        CreateTableRow(self.scrollFrame, entry, i % 2 == 0)
-    end
-
+    -- Create a content container for all the rows
+    local contentContainer = AceGUI:Create("SimpleGroup")
+    contentContainer:SetFullWidth(true)
+    contentContainer:SetLayout("Flow")
+    self.scrollFrame:AddChild(contentContainer)
+    self.contentContainer = contentContainer
+    
+    -- Calculate content height based on number of rows
+    local totalHeight = #history * self.rowHeight
+    local spacerFrame = AceGUI:Create("SimpleGroup")
+    spacerFrame:SetFullWidth(true)
+    spacerFrame:SetHeight(totalHeight)
+    contentContainer:AddChild(spacerFrame)
+    
     -- Add summary at the bottom
     self:AddTableSummary()
+    
+    -- Initial render of visible rows
+    self:UpdateVisibleRows()
+end
+
+-- Update only the currently visible rows for performance
+function HistoryUI:UpdateVisibleRows()
+    if not self.filteredHistory or #self.filteredHistory == 0 or not self.contentContainer then return end
+    
+    -- Clear previous rows but keep spacer
+    if self.visibleRowFrames then
+        for _, frame in ipairs(self.visibleRowFrames) do
+            frame:Release()
+        end
+    end
+    
+    -- Calculate visible range
+    local scrollFrame = self.scrollFrame
+    local scrollValue = scrollFrame.scrollbar:GetValue() or 0
+    local visibleStart = math.floor(scrollValue / self.rowHeight)
+    local visibleEnd = visibleStart + self.visibleRows
+    
+    -- Clamp to actual data range
+    visibleStart = math.max(0, visibleStart)
+    visibleEnd = math.min(#self.filteredHistory, visibleEnd)
+    
+    -- Create visible row frames
+    self.visibleRowFrames = {}
+    for i = visibleStart + 1, visibleEnd do
+        local entry = self.filteredHistory[i]
+        local rowFrame = CreateTableRow(self.contentContainer, entry, i % 2 == 0)
+        rowFrame.frame:SetPoint("TOPLEFT", self.contentContainer.frame, "TOPLEFT", 0, -((i-1) * self.rowHeight))
+        rowFrame.frame:SetPoint("TOPRIGHT", self.contentContainer.frame, "TOPRIGHT", 0, -((i-1) * self.rowHeight))
+        rowFrame.frame:SetHeight(self.rowHeight)
+        table.insert(self.visibleRowFrames, rowFrame)
+    end
+    
+    E:DebugPrint("[DEBUG] HistoryUI: Rendered %d visible rows (%d-%d of %d)", 
+        visibleEnd - visibleStart, visibleStart + 1, visibleEnd, #self.filteredHistory)
 end
 
 function HistoryUI:AddTableSummary()
-    -- Get the currently filtered history
-    local limit = self.currentLimit or 50
-    if limit == 999 then limit = nil end
-    local allHistory = E.Tracker:GetHistory(limit)
-
-    local history = {}
+    -- Use already filtered history from cached data
+    local history = self.filteredHistory or {}
     local filter = self.currentFilter or "all"
-
-    for _, entry in ipairs(allHistory) do
-        local rollType = entry.rollTypeName or "pass"
-        if filter == "all" or filter == rollType then
-            table.insert(history, entry)
-        end
-    end
 
     if #history == 0 then return end
 
