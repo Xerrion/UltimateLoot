@@ -333,14 +333,56 @@ function ItemRulesUI:CreateRulesList(container)
                     ruleFrame:AddChild(idLabel)
                 end
                 
-                -- Note if available
-                if rule.note then
-                    local noteLabel = AceGUI:Create("Label")
-                    noteLabel:SetText("Note: " .. rule.note)
-                    noteLabel:SetWidth(200)
-                    noteLabel:SetColor(0.6, 0.8, 0.9)
-                    ruleFrame:AddChild(noteLabel)
-                end
+                -- Note section
+                local noteGroup = AceGUI:Create("SimpleGroup")
+                noteGroup:SetLayout("Flow")
+                noteGroup:SetWidth(200)
+                ruleFrame:AddChild(noteGroup)
+                
+                -- Note display or placeholder
+                local noteText = rule.note or "No note"
+                local noteColor = rule.note and {0.6, 0.8, 0.9} or {0.5, 0.5, 0.5}
+                local noteLabel = AceGUI:Create("InteractiveLabel")
+                noteLabel:SetText(rule.note and "Note: " .. rule.note or "Add note...")
+                noteLabel:SetWidth(180)
+                noteLabel:SetColor(unpack(noteColor))
+                
+                -- Edit functionality
+                noteLabel:SetCallback("OnClick", function()
+                    -- Create popup for editing note
+                    StaticPopupDialogs["ULTIMATELOOT_EDIT_NOTE"] = {
+                        text = "Edit note for " .. (rule.link or rule.name or "item"),
+                        button1 = L["OKAY"] or "Okay",
+                        button2 = L["CANCEL"] or "Cancel",
+                        hasEditBox = true,
+                        editBoxWidth = 300,
+                        OnShow = function(dialog)
+                            dialog.editBox:SetText(rule.note or "")
+                            dialog.editBox:SetFocus()
+                        end,
+                        OnAccept = function(dialog)
+                            local newNote = dialog.editBox:GetText()
+                            if newNote and newNote:trim() ~= "" then
+                                rule.note = newNote
+                            else
+                                rule.note = nil
+                            end
+                            -- Refresh UI to show updated note
+                            RefreshRulesDisplay(self)
+                            -- Fire event for data update
+                            E:SendMessage("ULTIMATELOOT_ITEM_RULE_UPDATED", {
+                                ruleType = ruleType,
+                                rule = rule
+                            })
+                        end,
+                        timeout = 0,
+                        whileDead = true,
+                        hideOnEscape = true,
+                        preferredIndex = 3,
+                    }
+                    StaticPopup_Show("ULTIMATELOOT_EDIT_NOTE")
+                end)
+                noteGroup:AddChild(noteLabel)
 
                 -- Remove button
                 local removeButton = AceGUI:Create("Button")

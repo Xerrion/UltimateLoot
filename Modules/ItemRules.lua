@@ -14,6 +14,8 @@ local RULE_TYPES = {
 function ItemRules:OnInitialize()
     -- Register for loot decision events to apply rules
     self:RegisterMessage("ULTIMATELOOT_ITEM_HANDLED", "OnItemHandled")
+    -- Register for rule update events (for note editing)
+    self:RegisterMessage("ULTIMATELOOT_ITEM_RULE_UPDATED", "OnItemRuleUpdated")
 end
 
 function ItemRules:OnEnable()
@@ -241,6 +243,12 @@ function ItemRules:OnItemHandled(event, handledData)
         E:DebugPrint("[DEBUG] ItemRules: Item %s had rule %s (%s)",
             handledData.itemName, rule, reason)
     end
+end
+
+-- Handle rule update events (for note editing)
+function ItemRules:OnItemRuleUpdated(event, updateData)
+    if not updateData or not updateData.ruleType or not updateData.rule then return end
+    E:DebugPrint("[DEBUG] ItemRules: Updated rule for %s", updateData.rule.name or "Unknown")
 end
 
 -- Enable/disable item rules
