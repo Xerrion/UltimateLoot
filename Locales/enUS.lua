@@ -85,6 +85,22 @@ L["ITEMS_HANDLED_MOST_OFTEN"] = "Items Handled Most Often"
 L["PASSED_X_TIMES"] = "Handled %d times"
 L["ROLL_TYPE_BREAKDOWN"] = "Roll Type Breakdown"
 
+-- History UI elements
+L["SHOW_LABEL"] = "Show:"
+L["FILTER_LABEL"] = "Filter:"
+L["LIMIT_25"] = "25"
+L["LIMIT_50"] = "50"
+L["LIMIT_100"] = "100"
+L["LIMIT_200"] = "200"
+L["LIMIT_ALL"] = "All"
+L["FILTER_ALL"] = "All"
+L["FILTER_PASS_ONLY"] = "Pass Only"
+L["FILTER_NEED_ONLY"] = "Need Only"
+L["FILTER_GREED_ONLY"] = "Greed Only"
+L["CLEAR_HISTORY_CONFIRM"] = "Are you sure you want to clear the roll history?\n\nThis cannot be undone."
+L["UNKNOWN"] = "Unknown"
+L["DATE_FORMAT"] = "(YYYY-MM-DD)"
+
 -- Roll decision types
 L["PASS_ROLLS"] = "Pass"
 L["NEED_ROLLS"] = "Need"
@@ -98,9 +114,29 @@ L["TO"] = "To"
 L["RESET"] = "Reset"
 L["SEARCH"] = "Search"
 
+-- Table column headers
+L["ITEM_COLUMN"] = "Item"
+L["QUALITY_COLUMN"] = "Quality"
+L["DATE_COLUMN"] = "Date"
+
+-- Summary text
+L["ALL_TYPES"] = "All Types"
+L["FILTER_SUMMARY"] = "%s Only"
+L["SHOWING_ITEMS_SUMMARY"] = "Showing %d items (%s) | Pass: %d | Need: %d | Greed: %d"
+
 -- Graph tab
 L["HOURLY_ACTIVITY"] = "Hourly Activity (Last 24 Hours)"
 L["TOTAL_ROLLS_24H"] = "Total rolls in last 24 hours: %d"
+
+-- Statistics breakdown
+L["NO_ROLL_DATA"] = "No roll data available"
+L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Pass:|r %d (%.1f%%)
+|cff0080ffNeed:|r %d (%.1f%%)
+|cffffaa00Greed:|r %d (%.1f%%)"
+L["QUALITY_STATS_FORMAT"] = "%s: %d (%.1f%%) - %s"
+L["QUALITY_NO_DATA_FORMAT"] = "%s: 0"
+L["ROLL_STATS_FORMAT"] = "P:%d N:%d G:%d"
+L["TOTAL_WITH_ROLLS_FORMAT"] = "Total: %d (%s)"
 
 -- Export
 L["EXPORT_DATA_TITLE"] = "Export Data"
@@ -159,6 +195,11 @@ L["CURRENT_RULES"] = "Current Rules"
 L["USE_PATTERN"] = "Use Pattern Matching"
 L["USE_PATTERN_DESC"] = "Use Lua pattern matching for flexible name rules (e.g. \"Potion.*Strength\" matches all Strength Potions)"
 L["RULE_NOTE"] = "Rule Note"
+L["NO_NOTE"] = "No note"
+L["ADD_NOTE"] = "Add note..."
+L["NOTE_PREFIX"] = "Note: "
+L["EDIT_NOTE_FOR"] = "Edit note for "
+L["UNKNOWN_ITEM"] = "item"
 L["PATTERN_INVALID"] = "The pattern is not valid. Please check your syntax."
 L["OKAY"] = "Okay"
 L["CANCEL"] = "Cancel"

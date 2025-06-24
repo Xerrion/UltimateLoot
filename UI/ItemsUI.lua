@@ -78,8 +78,8 @@ function ItemsUI:CreateItemsTab(container)
         -- Count with roll breakdown
         local countLabel = AceGUI:Create("Label")
         local rollCounts = item.rollCounts or { pass = item.count or item.totalCount, need = 0, greed = 0 }
-        local rollBreakdown = string.format("P:%d N:%d G:%d", rollCounts.pass, rollCounts.need, rollCounts.greed)
-        countLabel:SetText(string.format("Total: %d (%s)", item.totalCount or item.count, rollBreakdown))
+        local rollBreakdown = string.format(L["ROLL_STATS_FORMAT"], rollCounts.pass, rollCounts.need, rollCounts.greed)
+        countLabel:SetText(string.format(L["TOTAL_WITH_ROLLS_FORMAT"], item.totalCount or item.count, rollBreakdown))
         countLabel:SetWidth(150)
         itemGroup:AddChild(countLabel)
 
