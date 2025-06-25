@@ -321,7 +321,7 @@ function ItemRulesUI:CreateRulesList(container)
                 local noteText = rule.note or L["NO_NOTE"]
                 local noteColor = rule.note and {0.6, 0.8, 0.9} or {0.5, 0.5, 0.5}
                 local noteLabel = AceGUI:Create("InteractiveLabel")
-                noteLabel:SetText(rule.note and L["NOTE_PREFIX"] .. rule.note or L["ADD_NOTE"])
+                noteLabel:SetText(rule.note or L["ADD_NOTE"])
                 noteLabel:SetWidth(180)
                 noteLabel:SetColor(unpack(noteColor))
                 

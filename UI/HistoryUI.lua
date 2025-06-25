@@ -28,12 +28,12 @@ local function CreateTableHeader(scrollFrame, sortColumn, sortDirection)
                 E.HistoryUI.sortColumn = columnKey
                 E.HistoryUI.sortDirection = "desc"
             end
-            
+
             -- Refresh the table with new sorting
             E.HistoryUI:RefreshHistoryTable()
         end
     }
-    
+
     E.UIUtils:CreateTableHeader(scrollFrame, COLUMNS, sortInfo)
 end
 
@@ -90,28 +90,13 @@ function HistoryUI:CreateHistoryTab(container)
 
     -- History scroll frame - using UIUtils
     local scrollFrame = E.UIUtils:CreateScrollFrame(container)
-    
+
     -- Store references for refreshing
     self.scrollFrame = scrollFrame
     self.currentLimit = 50     -- Default to showing 50 items
     self.currentFilter = "all" -- Default to showing all types
-    self.visibleRows = 15      -- Estimated number of visible rows
-    self.rowHeight = 30        -- Estimated height of each row
-    self.currentOffset = 0     -- Current scroll offset
-    
-    -- Initialize sorting properties
-    self.sortColumn = "date"  -- Default sort by date
+    self.sortColumn = "date"    -- Default sort by date
     self.sortDirection = "desc" -- Default newest first
-    
-    -- Add scroll event handler to handle virtualized rows
-    self.scrollFrame.frame:SetScript("OnScrollRangeChanged", function()
-        self:UpdateVisibleRows()
-    end)
-    
-    self.scrollFrame.frame:SetScript("OnVerticalScroll", function(_, offset)
-        self.currentOffset = math.floor(offset / self.rowHeight)
-        self:UpdateVisibleRows()
-    end)
 
     -- Populate the table
     self:RefreshHistoryTable()
@@ -148,36 +133,25 @@ function HistoryUI:RefreshHistoryTable()
     local filter = self.currentFilter or "all"
     local searchText = self.currentSearch or ""
     searchText = searchText:lower()
-    
-    -- Date range filters
-    local startTimestamp = self.dateFilterStart and time(self.dateFilterStart) or nil
-    local endTimestamp = self.dateFilterEnd and time(self.dateFilterEnd) or nil
-    
-    -- If we have an end date, move it to the end of that day for inclusive filtering
-    if endTimestamp then
-        endTimestamp = endTimestamp + (24*60*60) - 1 -- End of the day (23:59:59)
-    end
 
     -- Apply filters in a single pass for performance
     for _, entry in ipairs(allHistory) do
         local rollType = entry.rollTypeName or "pass"
-        
+
         -- Check all filter conditions at once to avoid unnecessary operations
         if (filter == "all" or filter == rollType) and
-           (searchText == "" or ((entry.itemName or ""):lower():find(searchText, 1, true) ~= nil)) and
-           (not startTimestamp or not entry.timestamp or entry.timestamp >= startTimestamp) and
-           (not endTimestamp or not entry.timestamp or entry.timestamp <= endTimestamp) then
+           (searchText == "" or ((entry.itemName or ""):lower():find(searchText, 1, true) ~= nil)) then
             table.insert(history, entry)
         end
     end
 
     E:DebugPrint("[DEBUG] HistoryUI: After filtering (%s): %d entries", filter, #history)
-    
+
     -- Apply sorting
     if #history > 0 then
         local sortCol = self.sortColumn or "date"
         local sortDir = self.sortDirection or "desc"
-        
+
         table.sort(history, function(a, b)
             -- Helper function to compare values based on column type
             local function compareValues(valA, valB)
@@ -187,7 +161,7 @@ function HistoryUI:RefreshHistoryTable()
                     return valA > valB
                 end
             end
-            
+
             if sortCol == "item" then
                 return compareValues((a.itemName or ""):lower(), (b.itemName or ""):lower())
             elseif sortCol == "quality" then
@@ -202,9 +176,6 @@ function HistoryUI:RefreshHistoryTable()
             end
         end)
     end
-    
-    -- Store the filtered and sorted history for virtual scrolling
-    self.filteredHistory = history
 
     -- Add proper table header with sorting indicators
     CreateTableHeader(self.scrollFrame, self.sortColumn, self.sortDirection)
@@ -214,30 +185,77 @@ function HistoryUI:RefreshHistoryTable()
         return
     end
 
-    -- Create a content container for all the rows
-    local contentContainer = AceGUI:Create("SimpleGroup")
-    contentContainer:SetFullWidth(true)
-    contentContainer:SetLayout("Flow")
-    self.scrollFrame:AddChild(contentContainer)
-    self.contentContainer = contentContainer
-    
-    -- Calculate content height based on number of rows
-    local totalHeight = #history * self.rowHeight
-    local spacerFrame = AceGUI:Create("SimpleGroup")
-    spacerFrame:SetFullWidth(true)
-    spacerFrame:SetHeight(totalHeight)
-    contentContainer:AddChild(spacerFrame)
-    
+    -- Create all rows directly (no virtualization)
+    for i, entry in ipairs(history) do
+        -- Create a row frame
+        local rowFrame = AceGUI:Create("SimpleGroup")
+        rowFrame:SetFullWidth(true)
+        rowFrame:SetLayout("Flow")
+        
+        -- Add alternating background
+        local rowBg = rowFrame.frame:CreateTexture(nil, "BACKGROUND")
+        rowBg:SetAllPoints(rowFrame.frame)
+        if i % 2 == 0 then
+            rowBg:SetTexture(0.1, 0.1, 0.15, 0.3)
+        else
+            rowBg:SetTexture(0.05, 0.05, 0.1, 0.5)
+        end
+        
+        -- Item column
+        local itemLabel = AceGUI:Create("InteractiveLabel")
+        itemLabel:SetText(entry.itemLink or entry.itemName)
+        itemLabel:SetWidth(COLUMNS[1].width)
+        local r, g, b = E.UIUtils:SetQualityColor(itemLabel, entry.quality)
+        
+        -- Add tooltip for item links
+        if entry.itemLink then
+            E.UIUtils:AddItemTooltip(itemLabel, entry.itemLink)
+        end
+        rowFrame:AddChild(itemLabel)
+        
+        -- Quality column
+        local qualityLabel = AceGUI:Create("Label")
+        qualityLabel:SetText(entry.qualityName or L["UNKNOWN"])
+        qualityLabel:SetWidth(COLUMNS[2].width)
+        qualityLabel:SetColor(r, g, b)
+        rowFrame:AddChild(qualityLabel)
+        
+        -- Decision column
+        local decisionLabel = AceGUI:Create("Label")
+        local rollTypeName = entry.rollTypeName or "pass" -- Default to "pass" for legacy entries
+        decisionLabel:SetText(E.UIUtils:GetRollDecisionText(rollTypeName))
+        decisionLabel:SetWidth(COLUMNS[3].width)
+        local dr, dg, db = E.UIUtils:GetRollDecisionColor(rollTypeName)
+        decisionLabel:SetColor(dr, dg, db)
+        rowFrame:AddChild(decisionLabel)
+        
+        -- Date column
+        local dateLabel = AceGUI:Create("Label")
+        dateLabel:SetText(entry.date or L["UNKNOWN"])
+        dateLabel:SetWidth(COLUMNS[4].width)
+        dateLabel:SetColor(0.8, 0.8, 0.8)
+        rowFrame:AddChild(dateLabel)
+        
+        -- Add the row to the scroll frame
+        self.scrollFrame:AddChild(rowFrame)
+    end
+
     -- Add summary at the bottom
     self:AddTableSummary()
-    
-    -- Initial render of visible rows
-    self:UpdateVisibleRows()
 end
 
 -- Update only the currently visible rows for performance
 function HistoryUI:UpdateVisibleRows()
-    if not self.filteredHistory or #self.filteredHistory == 0 or not self.contentContainer then return end
+    -- Early return checks
+    if not self.filteredHistory or #self.filteredHistory == 0 or not self.contentContainer then 
+        return 
+    end
+    
+    -- Avoid recursive updating
+    if self.updatingRows then
+        return
+    end
+    self.updatingRows = true
     
     -- Clear previous rows but keep spacer
     if self.visibleRowFrames then
@@ -245,29 +263,44 @@ function HistoryUI:UpdateVisibleRows()
             frame:Release()
         end
     end
-    
+
     -- Calculate visible range
     local scrollFrame = self.scrollFrame
-    local scrollValue = scrollFrame.scrollbar:GetValue() or 0
+    local scrollValue = 0
+
+    -- Try different ways to access scrollbar value depending on the AceGUI version
+    if scrollFrame.localstatus then
+        scrollValue = scrollFrame.localstatus.offset or 0
+    elseif scrollFrame.status then
+        scrollValue = scrollFrame.status.offset or 0
+    end
     local visibleStart = math.floor(scrollValue / self.rowHeight)
     local visibleEnd = visibleStart + self.visibleRows
-    
+
     -- Clamp to actual data range
     visibleStart = math.max(0, visibleStart)
     visibleEnd = math.min(#self.filteredHistory, visibleEnd)
-    
+
     -- Create visible row frames
     self.visibleRowFrames = {}
     for i = visibleStart + 1, visibleEnd do
         local entry = self.filteredHistory[i]
         local rowFrame = CreateTableRow(self.contentContainer, entry, i % 2 == 0)
-        rowFrame.frame:SetPoint("TOPLEFT", self.contentContainer.frame, "TOPLEFT", 0, -((i-1) * self.rowHeight))
-        rowFrame.frame:SetPoint("TOPRIGHT", self.contentContainer.frame, "TOPRIGHT", 0, -((i-1) * self.rowHeight))
-        rowFrame.frame:SetHeight(self.rowHeight)
+
+        -- Check if we have the proper frame object
+        if rowFrame and rowFrame.frame then
+            rowFrame.frame:SetPoint("TOPLEFT", self.contentContainer.frame, "TOPLEFT", 0, -((i - 1) * self.rowHeight))
+            rowFrame.frame:SetPoint("TOPRIGHT", self.contentContainer.frame, "TOPRIGHT", 0, -((i - 1) * self.rowHeight))
+            rowFrame.frame:SetHeight(self.rowHeight)
+        end
+
         table.insert(self.visibleRowFrames, rowFrame)
     end
+
+    -- Reset the update flag
+    self.updatingRows = false
     
-    E:DebugPrint("[DEBUG] HistoryUI: Rendered %d visible rows (%d-%d of %d)", 
+    E:DebugPrint("[DEBUG] HistoryUI: Rendered %d visible rows (%d-%d of %d)",
         visibleEnd - visibleStart, visibleStart + 1, visibleEnd, #self.filteredHistory)
 end
 
@@ -286,7 +319,8 @@ function HistoryUI:AddTableSummary()
     end
 
     -- Simple summary without textures
-    local filterText = filter == "all" and L["ALL_TYPES"] or string.format(L["FILTER_SUMMARY"], filter:gsub("^%l", string.upper))
+    local filterText = filter == "all" and L["ALL_TYPES"] or
+    string.format(L["FILTER_SUMMARY"], filter:gsub("^%l", string.upper))
     local summaryText = string.format(L["SHOWING_ITEMS_SUMMARY"],
         #history, filterText, counts.pass, counts.need, counts.greed)
 
@@ -304,7 +338,7 @@ function HistoryUI:CreateTableControls(controlsGroup)
     topRow:SetFullWidth(true)
     topRow:SetLayout("Flow")
     controlsGroup:AddChild(topRow)
-    
+
     -- Limit dropdown
     local limitLabel = AceGUI:Create("Label")
     limitLabel:SetText(L["SHOW_LABEL"])
@@ -368,19 +402,19 @@ function HistoryUI:CreateTableControls(controlsGroup)
         end)
     end)
     topRow:AddChild(clearButton)
-    
+
     -- Create a bottom row for search
     local bottomRow = AceGUI:Create("SimpleGroup")
     bottomRow:SetFullWidth(true)
     bottomRow:SetLayout("Flow")
     controlsGroup:AddChild(bottomRow)
-    
+
     -- Search box
     local searchLabel = AceGUI:Create("Label")
     searchLabel:SetText(L["SEARCH"] or "Search:")
     searchLabel:SetWidth(60)
     bottomRow:AddChild(searchLabel)
-    
+
     local searchBox = AceGUI:Create("EditBox")
     searchBox:SetWidth(200)
     searchBox:DisableButton(true)
@@ -389,88 +423,8 @@ function HistoryUI:CreateTableControls(controlsGroup)
         self:RefreshHistoryTable()
     end)
     bottomRow:AddChild(searchBox)
-    
-    -- Create a third row for date filters
-    local dateRow = AceGUI:Create("SimpleGroup")
-    dateRow:SetFullWidth(true)
-    dateRow:SetLayout("Flow")
-    controlsGroup:AddChild(dateRow)
-    
-    -- Date range filters
-    local dateFilterLabel = AceGUI:Create("Label")
-    dateFilterLabel:SetText(L["DATE_RANGE"] or "Date Range:")
-    dateFilterLabel:SetWidth(80)
-    dateRow:AddChild(dateFilterLabel)
-    
-    -- Date format text
-    local dateFormatLabel = AceGUI:Create("Label")
-    dateFormatLabel:SetText(L["DATE_FORMAT"])
-    dateFormatLabel:SetWidth(95)
-    dateFormatLabel:SetColor(0.7, 0.7, 0.7)
-    dateRow:AddChild(dateFormatLabel)
-    
-    -- Start date picker
-    local startDateLabel = AceGUI:Create("Label")
-    startDateLabel:SetText(L["FROM"] or "From:")
-    startDateLabel:SetWidth(40)
-    dateRow:AddChild(startDateLabel)
-    
-    local startDateBox = AceGUI:Create("EditBox")
-    startDateBox:SetWidth(90)
-    startDateBox:DisableButton(true)
-    startDateBox:SetCallback("OnTextChanged", function(widget, event, text)
-        if text == "" then
-            self.dateFilterStart = nil
-            self:RefreshHistoryTable()
-            return
-        end
-        
-        -- Parse date in YYYY-MM-DD format
-        local year, month, day = text:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
-        if year and month and day then
-            self.dateFilterStart = { year = tonumber(year), month = tonumber(month), day = tonumber(day) }
-            self:RefreshHistoryTable()
-        end
-    end)
-    dateRow:AddChild(startDateBox)
-    
-    -- End date picker
-    local endDateLabel = AceGUI:Create("Label")
-    endDateLabel:SetText(L["TO"] or "To:")
-    endDateLabel:SetWidth(30)
-    dateRow:AddChild(endDateLabel)
-    
-    local endDateBox = AceGUI:Create("EditBox")
-    endDateBox:SetWidth(90)
-    endDateBox:DisableButton(true)
-    endDateBox:SetCallback("OnTextChanged", function(widget, event, text)
-        if text == "" then
-            self.dateFilterEnd = nil
-            self:RefreshHistoryTable()
-            return
-        end
-        
-        -- Parse date in YYYY-MM-DD format
-        local year, month, day = text:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
-        if year and month and day then
-            self.dateFilterEnd = { year = tonumber(year), month = tonumber(month), day = tonumber(day) }
-            self:RefreshHistoryTable()
-        end
-    end)
-    dateRow:AddChild(endDateBox)
-    
-    -- Reset date filter button
-    local resetDatesButton = AceGUI:Create("Button")
-    resetDatesButton:SetText(L["RESET"] or "Reset")
-    resetDatesButton:SetWidth(60)
-    resetDatesButton:SetCallback("OnClick", function()
-        startDateBox:SetText("")
-        endDateBox:SetText("")
-        self.dateFilterStart = nil
-        self.dateFilterEnd = nil
-        self:RefreshHistoryTable()
-    end)
-    dateRow:AddChild(resetDatesButton)
+
+    -- No date filters
 end
 
 -- Refresh function for external calls
