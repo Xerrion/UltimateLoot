@@ -2,6 +2,21 @@
 
 All notable changes to UltimateLoot will be documented in this file.
 
+## [2.2.0] - 2025-06-26
+
+### ✨ New Features
+- **Default Threshold**: Changed default loot quality threshold from "epic" to "legendary" for better out-of-box experience
+
+### 🐛 Bug Fixes
+- **Localization**: Added missing localization strings for Item Rules UI
+- **Window Positioning**: Fixed issue where the Item Rules manager window would reset position when switching tabs
+- **UI Layout**: Improved layout of item rules with right-aligned remove buttons on the same line as items
+- **Rule Selection**: Changed default selected rule type to "Always Greed" for better usability
+
+### 💅 UI Improvements
+- **Visual Consistency**: Minor UI adjustments across History, Items, and Settings tabs
+- **Error Handling**: Added proper nil checks to prevent UI errors when viewing rule information
+
 ## [2.1.0] - 2025-06-22
 
 ### ✨ New Features
@@ -111,4 +126,4 @@ stats = {
 
 ---
 
-**Note**: Version 2.0.0 represents a complete rewrite and rebranding. Users upgrading from AutoPass should treat this as a new addon installation. 
+**Note**: Version 2.0.0 represents a complete rewrite and rebranding. Users upgrading from AutoPass should treat this as a new addon installation.

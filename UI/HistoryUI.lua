@@ -382,8 +382,23 @@ function HistoryUI:CreateTableControls(controlsGroup)
     end)
     topRow:AddChild(filterDropdown)
 
+        -- Search box
+    local searchLabel = AceGUI:Create("Label")
+    searchLabel:SetText(L["SEARCH"] or "Search:")
+    searchLabel:SetWidth(60)
+    topRow:AddChild(searchLabel)
+
+    local searchBox = AceGUI:Create("EditBox")
+    searchBox:SetWidth(200)
+    searchBox:DisableButton(true)
+    searchBox:SetCallback("OnTextChanged", function(widget, event, text)
+        self.currentSearch = text
+        self:RefreshHistoryTable()
+    end)
+    topRow:AddChild(searchBox)
+
     -- Refresh button
-    local refreshButton = AceGUI:Create("Button")
+--[[     local refreshButton = AceGUI:Create("Button")
     refreshButton:SetText(L["REFRESH"])
     refreshButton:SetWidth(80)
     refreshButton:SetCallback("OnClick", function()
@@ -401,30 +416,13 @@ function HistoryUI:CreateTableControls(controlsGroup)
             self:RefreshHistoryTable()
         end)
     end)
-    topRow:AddChild(clearButton)
+    topRow:AddChild(clearButton) ]]
 
     -- Create a bottom row for search
     local bottomRow = AceGUI:Create("SimpleGroup")
     bottomRow:SetFullWidth(true)
     bottomRow:SetLayout("Flow")
     controlsGroup:AddChild(bottomRow)
-
-    -- Search box
-    local searchLabel = AceGUI:Create("Label")
-    searchLabel:SetText(L["SEARCH"] or "Search:")
-    searchLabel:SetWidth(60)
-    bottomRow:AddChild(searchLabel)
-
-    local searchBox = AceGUI:Create("EditBox")
-    searchBox:SetWidth(200)
-    searchBox:DisableButton(true)
-    searchBox:SetCallback("OnTextChanged", function(widget, event, text)
-        self.currentSearch = text
-        self:RefreshHistoryTable()
-    end)
-    bottomRow:AddChild(searchBox)
-
-    -- No date filters
 end
 
 -- Refresh function for external calls
