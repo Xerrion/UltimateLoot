@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Title: UltimateLoot
 ## Notes: Ultimate loot management system with intelligent auto-rolling, item rules, statistics tracking, and comprehensive UI.
-## Version: 2.1.0
+## Version: 2.2.0
 ## SavedVariables: UltimateLootDB
 ## Author: Hunterrion (Warmane)
 
