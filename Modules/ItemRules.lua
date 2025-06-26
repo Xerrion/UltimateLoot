@@ -19,7 +19,9 @@ function ItemRules:OnInitialize()
 end
 
 function ItemRules:OnEnable()
-    E:DebugPrint("[DEBUG] ItemRules: Module enabled")
+    if E.db.debug_mode then
+        E:DebugPrint("[DEBUG] ItemRules: Module enabled")
+    end
 end
 
 -- Check if an item should have a specific rule applied
@@ -33,41 +35,41 @@ function ItemRules:CheckItemRule(itemName, itemLink, quality)
     end
 
     local rules = E.db.item_rules
-    local matchedRules = {}
+    local debugMode = E.db.debug_mode
     
-    -- Check and collect all matching rules with their priority
-    local ruleChecks = {
-        { key = "blacklist", action = "NEVER_PASS", priority = 100, reason = "Item in blacklist" },
-        { key = "always_need", action = "NEED", priority = 80, reason = "Item in always need list" },
-        { key = "always_greed", action = "GREED", priority = 60, reason = "Item in always greed list" },
-        { key = "whitelist", action = "PASS", priority = 40, reason = "Item in whitelist" }
-    }
+    -- OPTIMIZED: Check rules in priority order, return immediately on first match
+    -- Priority order: blacklist > always_need > always_greed > whitelist
     
-    for _, check in ipairs(ruleChecks) do
-        if self:IsItemInList(itemName, itemLink, rules[check.key]) then
-            table.insert(matchedRules, {
-                action = check.action,
-                priority = check.priority,
-                reason = check.reason
-            })
-            
-            E:DebugPrint("[DEBUG] ItemRules: Found matching rule type %s for %s (priority %d)", 
-                check.key, itemName or "unknown", check.priority)
+    -- Check blacklist first (highest priority)
+    if self:IsItemInList(itemName, itemLink, rules.blacklist) then
+        if debugMode then
+            E:DebugPrint("[DEBUG] ItemRules: Found blacklist rule for %s", itemName)
         end
+        return "NEVER_PASS", "Item in blacklist"
     end
     
-    -- If we have multiple matching rules, sort by priority (highest first)
-    if #matchedRules > 1 then
-        table.sort(matchedRules, function(a, b) return a.priority > b.priority end)
-        
-        E:DebugPrint("[DEBUG] ItemRules: Multiple rules for %s, using %s (priority %d)", 
-            itemName or "unknown", matchedRules[1].action, matchedRules[1].priority)
-            
-        -- Apply highest priority rule
-        return matchedRules[1].action, matchedRules[1].reason .. " (highest priority)"
-    elseif #matchedRules == 1 then
-        -- Just one rule, apply it
-        return matchedRules[1].action, matchedRules[1].reason
+    -- Check always_need (second priority)
+    if self:IsItemInList(itemName, itemLink, rules.always_need) then
+        if debugMode then
+            E:DebugPrint("[DEBUG] ItemRules: Found always_need rule for %s", itemName)
+        end
+        return "NEED", "Item in always need list"
+    end
+    
+    -- Check always_greed (third priority)
+    if self:IsItemInList(itemName, itemLink, rules.always_greed) then
+        if debugMode then
+            E:DebugPrint("[DEBUG] ItemRules: Found always_greed rule for %s", itemName)
+        end
+        return "GREED", "Item in always greed list"
+    end
+    
+    -- Check whitelist (lowest priority)
+    if self:IsItemInList(itemName, itemLink, rules.whitelist) then
+        if debugMode then
+            E:DebugPrint("[DEBUG] ItemRules: Found whitelist rule for %s", itemName)
+        end
+        return "PASS", "Item in whitelist"
     end
     
     return nil, "No specific rule"
@@ -77,35 +79,40 @@ end
 function ItemRules:IsItemInList(itemName, itemLink, ruleList)
     if not ruleList or #ruleList == 0 then return false end
 
+    -- OPTIMIZED: Cache lowercased item name to avoid repeated string operations
+    local itemNameLower = itemName and itemName:lower()
+    local itemId = itemLink and self:ExtractItemIdFromLink(itemLink)
+    
     for _, rule in ipairs(ruleList) do
-        -- Match by name using pattern if pattern flag is set
-        if rule.name and itemName then
+        -- Match by exact link first (fastest comparison)
+        if rule.link and itemLink and rule.link == itemLink then
+            return true
+        end
+
+        -- Match by item ID if available (second fastest)
+        if rule.itemId and itemId and tonumber(itemId) == tonumber(rule.itemId) then
+            return true
+        end
+
+        -- Match by name (slower, string operations)
+        if rule.name and itemNameLower then
             if rule.usePattern then
-                -- Use Lua pattern matching (regex-like)
-                local success, result = pcall(function() return itemName:lower():match(rule.name:lower()) end)
+                -- Use Lua pattern matching (regex-like) - wrapped in pcall for safety
+                local success, result = pcall(function() 
+                    return itemNameLower:match(rule.name:lower()) 
+                end)
                 if success and result then
-                    E:DebugPrint("[DEBUG] ItemRules: Pattern match for %s with pattern %s", itemName, rule.name)
+                    if E.db.debug_mode then
+                        E:DebugPrint("[DEBUG] ItemRules: Pattern match for %s with pattern %s", itemName, rule.name)
+                    end
                     return true
                 end
             else
-                -- Use standard substring match (case insensitive)
-                if itemName:lower():find(rule.name:lower(), 1, true) then
+                -- Use standard substring match (case insensitive) - faster than pattern matching
+                if itemNameLower:find(rule.name:lower(), 1, true) then
                     return true
                 end
             end
-        end
-
-        -- Match by item ID if available
-        if rule.itemId and itemLink then
-            local itemId = self:ExtractItemIdFromLink(itemLink)
-            if itemId and tonumber(itemId) == tonumber(rule.itemId) then
-                return true
-            end
-        end
-
-        -- Match by exact link
-        if rule.link and itemLink and rule.link == itemLink then
-            return true
         end
     end
 
@@ -154,10 +161,12 @@ function ItemRules:AddItemRule(ruleType, itemName, itemLink, itemId, options)
 
     table.insert(rules, newRule)
 
-    E:DebugPrint("[DEBUG] ItemRules: Added %s rule for %s%s", 
-        ruleType, 
-        itemName or "Unknown", 
-        newRule.usePattern and " (pattern)" or "")
+    if E.db.debug_mode then
+        E:DebugPrint("[DEBUG] ItemRules: Added %s rule for %s%s", 
+            ruleType, 
+            itemName or "Unknown", 
+            newRule.usePattern and " (pattern)" or "")
+    end
 
     -- Fire event for UI updates
     E:SendMessage("ULTIMATELOOT_ITEM_RULE_ADDED", {
@@ -186,7 +195,9 @@ function ItemRules:RemoveItemRule(ruleType, itemName, itemLink)
             (rule.link and itemLink and rule.link == itemLink) then
             table.remove(rules, i)
 
-            E:DebugPrint("[DEBUG] ItemRules: Removed %s rule for %s", ruleType, itemName or "Unknown")
+            if E.db.debug_mode then
+                E:DebugPrint("[DEBUG] ItemRules: Removed %s rule for %s", ruleType, itemName or "Unknown")
+            end
 
             -- Fire event for UI updates
             E:SendMessage("ULTIMATELOOT_ITEM_RULE_REMOVED", {
@@ -219,12 +230,16 @@ function ItemRules:ClearRules(ruleType)
         E.db.item_rules.whitelist = {}
         E.db.item_rules.always_need = {}
         E.db.item_rules.always_greed = {}
-        E:DebugPrint("[DEBUG] ItemRules: Cleared all rules")
+        if E.db.debug_mode then
+            E:DebugPrint("[DEBUG] ItemRules: Cleared all rules")
+        end
     else
         local ruleKey = RULE_TYPES[ruleType:upper()]
         if ruleKey then
             E.db.item_rules[ruleKey] = {}
-            E:DebugPrint("[DEBUG] ItemRules: Cleared %s rules", ruleType)
+            if E.db.debug_mode then
+                E:DebugPrint("[DEBUG] ItemRules: Cleared %s rules", ruleType)
+            end
         end
     end
 
@@ -239,7 +254,7 @@ function ItemRules:OnItemHandled(event, handledData)
     if not handledData.isTest then return end -- Only log test decisions for now
 
     local rule, reason = self:CheckItemRule(handledData.itemName, handledData.itemLink, handledData.quality)
-    if rule then
+    if rule and E.db.debug_mode then
         E:DebugPrint("[DEBUG] ItemRules: Item %s had rule %s (%s)",
             handledData.itemName, rule, reason)
     end
@@ -248,13 +263,17 @@ end
 -- Handle rule update events (for note editing)
 function ItemRules:OnItemRuleUpdated(event, updateData)
     if not updateData or not updateData.ruleType or not updateData.rule then return end
-    E:DebugPrint("[DEBUG] ItemRules: Updated rule for %s", updateData.rule.name or "Unknown")
+    if E.db.debug_mode then
+        E:DebugPrint("[DEBUG] ItemRules: Updated rule for %s", updateData.rule.name or "Unknown")
+    end
 end
 
 -- Enable/disable item rules
 function ItemRules:SetEnabled(enabled)
     E.db.item_rules_enabled = enabled
-    E:DebugPrint("[DEBUG] ItemRules: %s", enabled and "Enabled" or "Disabled")
+    if E.db.debug_mode then
+        E:DebugPrint("[DEBUG] ItemRules: %s", enabled and "Enabled" or "Disabled")
+    end
 end
 
 function ItemRules:IsEnabled()
