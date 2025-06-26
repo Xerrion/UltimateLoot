@@ -26,6 +26,10 @@ function ItemsUI:CreateItemsTab(container)
     -- Create scrolling frame inside the group using UIUtils
     local scrollFrame = E.UIUtils:CreateScrollFrame(itemsGroup)
 
+    -- Cache UIUtils and formatting functions
+    local SetQualityColor = E.UIUtils.SetQualityColor
+    local AddItemTooltip = E.UIUtils.AddItemTooltip
+
     -- Add item entries
     for i, item in ipairs(topItems) do
         local itemGroup = AceGUI:Create("InlineGroup")
@@ -35,13 +39,14 @@ function ItemsUI:CreateItemsTab(container)
 
         -- Item link/name
         local itemLabel = AceGUI:Create("InteractiveLabel")
-        itemLabel:SetText(item.itemKey or item.itemName)
+        local itemKey = item.itemKey or item.itemName
+        itemLabel:SetText(itemKey)
         itemLabel:SetWidth(300)
-        local r, g, b = E.UIUtils:SetQualityColor(itemLabel, item.quality)
+        local r, g, b = SetQualityColor(itemLabel, item.quality)
 
         -- Add tooltip if it's a real item link using UIUtils
-        if item.itemKey and item.itemKey:match("|H.-|h") then
-            E.UIUtils:AddItemTooltip(itemLabel, item.itemKey)
+        if itemKey and itemKey:match("|H.-|h") then
+            AddItemTooltip(itemLabel, itemKey)
         end
         itemGroup:AddChild(itemLabel)
 
@@ -49,7 +54,6 @@ function ItemsUI:CreateItemsTab(container)
         local qualityLabel = AceGUI:Create("Label")
         qualityLabel:SetText(item.qualityName)
         qualityLabel:SetWidth(100)
-        --[[ qualityLabel:SetColor(r, g, b) ]]
         itemGroup:AddChild(qualityLabel)
 
         -- Count with roll breakdown

@@ -42,11 +42,12 @@ function GraphUI:CreateGraphTab(container)
     local originalRelease = graphContainer.Release
     graphContainer.Release = function(self)
         if self.graphFrame then
-            if self.graphFrame.bars then
+            local bars = self.graphFrame.bars
+            if bars then
                 for i = 0, 23 do
-                    if self.graphFrame.bars[i] then
-                        self.graphFrame.bars[i]:Hide()
-                        self.graphFrame.bars[i] = nil
+                    if bars[i] then
+                        bars[i]:Hide()
+                        bars[i] = nil
                     end
                 end
                 self.graphFrame.bars = nil
@@ -59,6 +60,9 @@ function GraphUI:CreateGraphTab(container)
         end
         originalRelease(self)
     end
+
+    -- Cache math functions for performance
+    local mathMax = math.max
 
     -- Function to render the graph
     local function RenderGraph()
@@ -86,27 +90,30 @@ function GraphUI:CreateGraphTab(container)
         end
 
         -- Clear existing bars
-        if graphFrame.bars then
+        local bars = graphFrame.bars
+        if bars then
             for i = 0, 23 do
-                if graphFrame.bars[i] then
-                    graphFrame.bars[i]:Hide()
+                if bars[i] then
+                    bars[i]:Hide()
                 end
             end
         end
 
-        graphFrame.bars = graphFrame.bars or {}
+        graphFrame.bars = bars or {}
+        bars = graphFrame.bars
 
-        local barWidth = math.max(1, (frameWidth - 40) / 24)
-        local barHeight = math.max(1, frameHeight - 60)
+        local barWidth = mathMax(1, (frameWidth - 40) / 24)
+        local barHeight = mathMax(1, frameHeight - 60)
+        local maxValueInv = maxValue > 0 and (1 / maxValue) or 0
 
         for i = 0, 23 do
-            local bar = graphFrame.bars[i] or CreateFrame("Frame", nil, graphFrame)
+            local bar = bars[i] or CreateFrame("Frame", nil, graphFrame)
             bar:Show()
             bar:SetWidth(barWidth - 2)
 
             local count = hourlyData[23 - i] or 0
-            local height = maxValue > 0 and (count / maxValue) * barHeight or 1
-            bar:SetHeight(math.max(height, 1))
+            local height = maxValueInv > 0 and (count * maxValueInv) * barHeight or 1
+            bar:SetHeight(mathMax(height, 1))
             bar:SetPoint("BOTTOMLEFT", graphFrame, "BOTTOMLEFT", 20 + (i * barWidth), 30)
 
             if not bar.texture then
@@ -116,27 +123,33 @@ function GraphUI:CreateGraphTab(container)
                 bar.texture:SetTexture(0.1, 0.5, 0.8, 0.8)
             end
 
-            if not bar.label then
-                bar.label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-                bar.label:SetPoint("BOTTOM", bar, "TOP", 0, 2)
+            local label = bar.label
+            if not label then
+                label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                label:SetPoint("BOTTOM", bar, "TOP", 0, 2)
+                bar.label = label
             end
-            bar.label:SetText(tostring(count))
+            label:SetText(tostring(count))
 
-            if not bar.hourLabel then
-                bar.hourLabel = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-                bar.hourLabel:SetPoint("TOP", bar, "BOTTOM", 0, -2)
+            local hourLabel = bar.hourLabel
+            if not hourLabel then
+                hourLabel = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                hourLabel:SetPoint("TOP", bar, "BOTTOM", 0, -2)
+                bar.hourLabel = hourLabel
             end
-            bar.hourLabel:SetText(string.format("%dh", 23 - i))
+            hourLabel:SetText(string.format("%dh", 23 - i))
 
-            graphFrame.bars[i] = bar
+            bars[i] = bar
         end
 
         -- Add title
-        if not graphFrame.title then
-            graphFrame.title = graphFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-            graphFrame.title:SetPoint("TOP", graphFrame, "TOP", 0, -10)
+        local title = graphFrame.title
+        if not title then
+            title = graphFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+            title:SetPoint("TOP", graphFrame, "TOP", 0, -10)
+            graphFrame.title = title
         end
-        graphFrame.title:SetText(string.format(L["TOTAL_ROLLS_24H"], E.Tracker:GetRollsByTimeframe(24).total))
+        title:SetText(string.format(L["TOTAL_ROLLS_24H"], E.Tracker:GetRollsByTimeframe(24).total))
     end
 
     graphFrame:SetScript("OnShow", function(self)
