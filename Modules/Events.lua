@@ -32,16 +32,12 @@ end
 function E:START_LOOT_ROLL(_, rollID)
   -- Safety checks
   if not rollID or rollID < 1 then
-    if self.db.debug_mode then
-      E:DebugPrint("[DEBUG] Invalid rollID received: %s", tostring(rollID))
-    end
+    E:DebugPrint("[DEBUG] Invalid rollID received: %s", tostring(rollID))
     return
   end
 
   if not self.UltimateLoot or not E:GetEnabled() then
-    if self.db.debug_mode then
-      E:DebugPrint("[DEBUG] UltimateLoot not available or disabled")
-    end
+    E:DebugPrint("[DEBUG] UltimateLoot not available or disabled")
     return
   end
 
@@ -50,9 +46,7 @@ function E:START_LOOT_ROLL(_, rollID)
       GetLootRollItemInfo(rollID)
 
   if not name or not quality then
-    if self.db.debug_mode then
-      E:DebugPrint("[DEBUG] Failed to get loot roll item info for rollID: %s", rollID)
-    end
+    E:DebugPrint("[DEBUG] Failed to get loot roll item info for rollID: %s", rollID)
     return
   end
 
@@ -60,7 +54,6 @@ function E:START_LOOT_ROLL(_, rollID)
   local db = self.db
   local threshold = db.loot_quality_threshold or "epic"
   local thresholdValue = QUALITY_ORDER[threshold] or 4
-  local debugMode = db.debug_mode
   
   -- Get item link once for reuse throughout function
   local itemLink = GetLootRollItemLink(rollID)
@@ -70,20 +63,16 @@ function E:START_LOOT_ROLL(_, rollID)
       qualityColors[1] * 255, qualityColors[2] * 255, qualityColors[3] * 255, name)
   end
 
-  if debugMode then
-    E:DebugPrint("[DEBUG] Loot roll started: %s (Quality: %d, Threshold: %s=%d)",
-      name, quality, threshold, thresholdValue)
-    E:DebugPrint("[DEBUG] Roll options - Need: %s, Greed: %s, Disenchant: %s",
-      tostring(canNeed), tostring(canGreed), tostring(canDisenchant))
-  end
+  E:DebugPrint("[DEBUG] Loot roll started: %s (Quality: %d, Threshold: %s=%d)",
+    name, quality, threshold, thresholdValue)
+  E:DebugPrint("[DEBUG] Roll options - Need: %s, Greed: %s, Disenchant: %s",
+    tostring(canNeed), tostring(canGreed), tostring(canDisenchant))
 
   -- Check for Pass on All override first
   if E.db.pass_on_all then
     local success = pcall(RollOnLoot, rollID, 0) -- Always pass
     if success then
-      if debugMode then
-        E:DebugPrint("[DEBUG] Pass on All: Passed on %s", name)
-      end
+      E:DebugPrint("[DEBUG] Pass on All: Passed on %s", name)
 
       if db.show_notifications then
         local qualityName = E.QUALITY_CONSTANTS and E.QUALITY_CONSTANTS.NAMES[quality] or "Unknown"
@@ -121,30 +110,22 @@ function E:START_LOOT_ROLL(_, rollID)
     local rule, ruleReason = E.ItemRules:CheckItemRule(name, itemLink, quality)
 
     if rule == "NEVER_PASS" then
-      if debugMode then
-        E:DebugPrint("[DEBUG] Item rule: Never pass on %s (%s)", name, ruleReason)
-      end
+      E:DebugPrint("[DEBUG] Item rule: Never pass on %s (%s)", name, ruleReason)
       return -- Don't automatically handle due to item rule
     elseif rule == "PASS" then
       shouldPass = true
       reason = ruleReason
-      if debugMode then
-        E:DebugPrint("[DEBUG] Item rule: Force pass on %s (%s)", name, ruleReason)
-      end
+      E:DebugPrint("[DEBUG] Item rule: Force pass on %s (%s)", name, ruleReason)
     elseif rule == "NEED" then
       rollAction = 1 -- Need
       shouldPass = true
       reason = ruleReason
-      if debugMode then
-        E:DebugPrint("[DEBUG] Item rule: Force need on %s (%s)", name, ruleReason)
-      end
+      E:DebugPrint("[DEBUG] Item rule: Force need on %s (%s)", name, ruleReason)
     elseif rule == "GREED" then
       rollAction = 2 -- Greed
       shouldPass = true
       reason = ruleReason
-      if debugMode then
-        E:DebugPrint("[DEBUG] Item rule: Force greed on %s (%s)", name, ruleReason)
-      end
+      E:DebugPrint("[DEBUG] Item rule: Force greed on %s (%s)", name, ruleReason)
     else
       -- No specific rule, use quality threshold
       shouldPass = quality <= thresholdValue
@@ -159,9 +140,7 @@ function E:START_LOOT_ROLL(_, rollID)
     if success then
       local actionName = (rollAction == 1 and "needed" or rollAction == 2 and "greeded" or "passed")
       
-      if debugMode then
-        E:DebugPrint("[DEBUG] Successfully %s on %s (%s)", actionName, name, reason)
-      end
+      E:DebugPrint("[DEBUG] Successfully %s on %s (%s)", actionName, name, reason)
 
       -- Show notification if enabled  
       if db.show_notifications then
@@ -197,23 +176,17 @@ function E:START_LOOT_ROLL(_, rollID)
         self.Tracker:TrackRoll(itemLink, name, quality, rollAction)
       end
     else
-      if debugMode then
-        E:DebugPrint("[DEBUG] Failed to roll on %s - RollOnLoot call failed", name)
-      end
+      E:DebugPrint("[DEBUG] Failed to roll on %s - RollOnLoot call failed", name)
       self:HandleError("ROLL_FAILED", "Failed to roll on " .. name, "START_LOOT_ROLL")
     end
   else
-    if debugMode then
-      E:DebugPrint("[DEBUG] Not auto-rolling on %s - %s", name, reason)
-    end
+    E:DebugPrint("[DEBUG] Not auto-rolling on %s - %s", name, reason)
   end
 end
 
 -- Handle loot roll cancellation for cleanup
 function E:CANCEL_LOOT_ROLL(_, rollID)
-  if self.db.debug_mode then
-    E:DebugPrint("[DEBUG] Loot roll cancelled: %s", tostring(rollID))
-  end
+  E:DebugPrint("[DEBUG] Loot roll cancelled: %s", tostring(rollID))
 
   -- Fire event for UI updates or cleanup
   self:SendMessage("ULTIMATELOOT_LOOT_ROLL_CANCELLED", {
@@ -233,58 +206,44 @@ end
 -- Group change events removed - were only used for debug logging with no functionality
 
 function E:PLAYER_LOGIN()
-  if self.db.debug_mode then
-    E:DebugPrint("[DEBUG] PLAYER_LOGIN event received")
-  end
+  E:DebugPrint("[DEBUG] PLAYER_LOGIN event received")
   
   if self.UltimateLoot then
     self.UltimateLoot:PrintStatus()
 
     -- Fire login event for other modules
-    if self.db.debug_mode then
-      E:DebugPrint("[DEBUG] Firing ULTIMATELOOT_PLAYER_LOGIN event")
-    end
+    E:DebugPrint("[DEBUG] Firing ULTIMATELOOT_PLAYER_LOGIN event")
     self:SendMessage("ULTIMATELOOT_PLAYER_LOGIN")
   end
 end
 
 function E:ADDON_LOADED(_, addonName)
-  if self.db.debug_mode then
-    E:DebugPrint("[DEBUG] ADDON_LOADED event received for: %s", addonName)
-  end
+  E:DebugPrint("[DEBUG] ADDON_LOADED event received for: %s", addonName)
   
   if self.UltimateLoot and addonName == self._name then
     self.UltimateLoot:PrintStatus()
 
     -- Fire addon loaded event
-    if self.db.debug_mode then
-      E:DebugPrint("[DEBUG] Firing ULTIMATELOOT_ADDON_LOADED event")
-    end
+    E:DebugPrint("[DEBUG] Firing ULTIMATELOOT_ADDON_LOADED event")
     self:SendMessage("ULTIMATELOOT_ADDON_LOADED", addonName)
   end
 end
 
 function E:PLAYER_ENTERING_WORLD()
-  if self.db.debug_mode then
-    E:DebugPrint("[DEBUG] PLAYER_ENTERING_WORLD event received")
-  end
+  E:DebugPrint("[DEBUG] PLAYER_ENTERING_WORLD event received")
   
   if self.UltimateLoot then
     self.UltimateLoot:PrintStatus()
 
     -- Fire world enter event
-    if self.db.debug_mode then
-      E:DebugPrint("[DEBUG] Firing ULTIMATELOOT_WORLD_ENTERED event")
-    end
+    E:DebugPrint("[DEBUG] Firing ULTIMATELOOT_WORLD_ENTERED event")
     self:SendMessage("ULTIMATELOOT_WORLD_ENTERED")
   end
 end
 
 -- Error handling function that fires events
 function E:HandleError(errorType, errorMessage, context)
-  if self.db.debug_mode then
-    E:DebugPrint("[DEBUG] HandleError called: %s - %s", errorType, errorMessage)
-  end
+  E:DebugPrint("[DEBUG] HandleError called: %s - %s", errorType, errorMessage)
 
   self:SendMessage("ULTIMATELOOT_ERROR", {
     type = errorType,
