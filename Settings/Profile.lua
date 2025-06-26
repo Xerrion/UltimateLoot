@@ -1,6 +1,6 @@
 ProfileDefaults = {
     enabled = false,
-    loot_quality_threshold = "epic", -- Automatically handle poor/common/uncommon/rare, prompt for epic+
+    loot_quality_threshold = "legendary", -- Automatically handle poor/common/uncommon/rare, prompt for epic+
     pass_on_all = false,             -- Override all rules and pass on everything
     debug_mode = false,
     debug_to_chat = true,            -- Also print debug output to chat by default
