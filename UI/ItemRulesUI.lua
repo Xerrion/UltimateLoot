@@ -21,9 +21,10 @@ end
 
 -- Helper function to get total rule count
 local function GetRuleCount()
-    if not E.ItemRules then return 0 end
+    local itemRules = E.ItemRules
+    if not itemRules then return 0 end
 
-    local allRules = E.ItemRules:GetRules()
+    local allRules = itemRules:GetRules()
     local totalCount = 0
 
     for ruleType, rules in pairs(allRules) do
@@ -50,8 +51,10 @@ function ItemRulesUI:CreateItemRulesTab(container)
     local scrollFrame = E.UIUtils:CreateScrollFrame(container)
     self.scrollFrame = scrollFrame
 
+    -- Cache ItemRules module
+    local itemRules = E.ItemRules
     -- If module is disabled, show message and return
-    if not E.ItemRules or not E.ItemRules:IsEnabled() then
+    if not itemRules or not itemRules:IsEnabled() then
         local disabledGroup = AceGUI:Create("InlineGroup")
         disabledGroup:SetTitle(L["ITEM_RULES_SYSTEM"])
         disabledGroup:SetFullWidth(true)
@@ -430,8 +433,12 @@ function ItemRulesUI:ShowRulesWindow()
         -- Title and description
         local titleText = AceGUI:Create("Label")
         
-        titleText:SetText(activeRuleInfo.title)
-        --[[ titleText:SetColor(unpack(activeRuleInfo.color)) ]]
+        -- Safety check for activeRuleInfo
+        if activeRuleInfo and activeRuleInfo.title then
+            titleText:SetText(activeRuleInfo.title)
+        else
+            titleText:SetText("Unknown Rule Type")
+        end
         titleText:SetFontObject(GameFontNormalLarge)
         titleText:SetFullWidth(true)
         gridContainer:AddChild(titleText)
@@ -439,6 +446,7 @@ function ItemRulesUI:ShowRulesWindow()
         -- Create grid of rule cards
         local cardsPerRow = 2
         local currentRow = nil
+        local ruleColor = activeRuleInfo and activeRuleInfo.color or { 0.5, 0.5, 0.5 }
 
         for i, rule in ipairs(activeRules) do
             -- Create new row if needed
@@ -455,10 +463,12 @@ function ItemRulesUI:ShowRulesWindow()
             card:SetLayout("List")
 
             -- Style card based on rule type
-            local r, g, b = unpack(activeRuleInfo.color)
+            local r, g, b = unpack(ruleColor)
             card.frame:SetBackdropBorderColor(r, g, b, 0.7)
 
-            currentRow:AddChild(card)
+            if currentRow and currentRow.AddChild then
+                currentRow:AddChild(card)
+            end
 
             -- Create a header group for item label and remove button side by side
             local headerGroup = AceGUI:Create("SimpleGroup")
