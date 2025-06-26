@@ -156,12 +156,21 @@ function HistoryUI:RefreshHistoryTable()
             end
         end
         
-        if passesFilter then
+        if passesFilter and entry then
             table.insert(history, entry)
         end
     end
 
-    -- OPTIMIZED: Sort only once with cached comparator
+    -- OPTIMIZED: Remove any nil entries and sort only once with cached comparator
+    -- Clean up history table to ensure no nil values
+    local cleanHistory = {}
+    for _, entry in ipairs(history) do
+        if entry then
+            table.insert(cleanHistory, entry)
+        end
+    end
+    history = cleanHistory
+
     if #history > 1 then
         local sortCol = self.sortColumn or "date"
         local sortDir = self.sortDirection or "desc"
@@ -169,22 +178,26 @@ function HistoryUI:RefreshHistoryTable()
         
         if sortCol == "item" then
             table.sort(history, function(a, b)
+                if not a or not b then return false end
                 local valA, valB = (a.itemName or ""):lower(), (b.itemName or ""):lower()
                 return ascending and valA < valB or valA > valB
             end)
         elseif sortCol == "quality" then
             table.sort(history, function(a, b)
+                if not a or not b then return false end
                 local valA, valB = a.quality or 0, b.quality or 0
                 return ascending and valA < valB or valA > valB
             end)
         elseif sortCol == "decision" then
             table.sort(history, function(a, b)
+                if not a or not b then return false end
                 local valA = a.rollTypeName == "need" and 3 or a.rollTypeName == "greed" and 2 or 1
                 local valB = b.rollTypeName == "need" and 3 or b.rollTypeName == "greed" and 2 or 1
                 return ascending and valA < valB or valA > valB
             end)
         else -- date
             table.sort(history, function(a, b)
+                if not a or not b then return false end
                 local valA, valB = a.timestamp or 0, b.timestamp or 0
                 return ascending and valA < valB or valA > valB
             end)
