@@ -49,7 +49,7 @@ function ItemsUI:CreateItemsTab(container)
         local qualityLabel = AceGUI:Create("Label")
         qualityLabel:SetText(item.qualityName)
         qualityLabel:SetWidth(100)
-        qualityLabel:SetColor(r, g, b)
+        --[[ qualityLabel:SetColor(r, g, b) ]]
         itemGroup:AddChild(qualityLabel)
 
         -- Count with roll breakdown
