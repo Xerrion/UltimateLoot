@@ -27,7 +27,14 @@ L["PASS_ON_ALL_DESC"] = "Alle Regeln und Qualitätsschwellen überschreiben - au
 L["PASS_ON_ALL_WARNING"] =
 "|cffff8000Warnung:|r Modus 'Auf alles verzichten' ist |cffff0000AKTIV|r - alle Regeln und Schwellen werden ignoriert"
 
-
+-- Item Rules UI strings
+L["ITEM_RULES_DESC"] = "Automatische Regeln für die Behandlung bestimmter Gegenstände konfigurieren, wenn Beutewürfe erscheinen"
+L["RULES_SUMMARY"] = "Regelzusammenfassung"
+L["TOTAL_RULES"] = "Gesamtzahl der Regeln"
+L["MANAGE_RULES"] = "Regeln verwalten"
+L["ITEM_RULES_MANAGER"] = "Gegenstandsregeln-Manager"
+L["CLEAR_RULES_OF_TYPE"] = "Alle Regeln dieses Typs löschen"
+L["NO_RULES_OF_TYPE"] = "Keine Regeln dieses Typs konfiguriert"
 
 -- Items tab
 L["NO_ITEMS_PASSED"] = "Es wurden noch keine Gegenstände behandelt."

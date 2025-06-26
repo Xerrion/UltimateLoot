@@ -215,3 +215,12 @@ L["TEST_RULES"] = "Test Rules"
 L["CLEAR_ALL_RULES"] = "Clear All Rules"
 L["CLEAR_ALL_RULES_CONFIRM"] = "Are you sure you want to clear ALL item rules?\n\nThis cannot be undone."
 L["CLEAR_RULE_TYPE_CONFIRM"] = "Clear all %s?"
+
+-- Item Rules UI strings
+L["ITEM_RULES_DESC"] = "Configure automatic rules for handling specific items when loot rolls appear"
+L["RULES_SUMMARY"] = "Rules Summary"
+L["TOTAL_RULES"] = "Total Rules"
+L["MANAGE_RULES"] = "Manage Rules"
+L["ITEM_RULES_MANAGER"] = "Item Rules Manager"
+L["CLEAR_RULES_OF_TYPE"] = "Clear All Rules of This Type"
+L["NO_RULES_OF_TYPE"] = "No rules of this type configured"

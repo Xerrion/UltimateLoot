@@ -84,7 +84,7 @@ function SettingsUI:CreateSettingsTab(container)
     qualityDesc:SetText(L["LOOT_QUALITY_THRESHOLD_DESC"])
     qualityDesc:SetFullWidth(true)
     qualityDesc:SetFontObject(GameFontNormalSmall)
-    qualityDesc:SetColor(0.8, 0.8, 0.8)
+    --[[ qualityDesc:SetColor(0.8, 0.8, 0.8) ]]
     generalGroup:AddChild(qualityDesc)
 
     -- Pass on All override
