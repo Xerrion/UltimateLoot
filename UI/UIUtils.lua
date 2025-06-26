@@ -34,25 +34,15 @@ function UIUtils:SafeCall(funcName, func, ...)
     return true, result
 end
 
--- Create UI elements safely
+-- Create UI elements safely - OPTIMIZED for common case
 function UIUtils:SafeCreateWidget(widgetType, errorCallback)
-    local widget
-
-    local success, result = self:SafeCall("CreateWidget(" .. widgetType .. ")", function()
-        return AceGUI:Create(widgetType)
-    end)
-
-    if success then
-        widget = result
-        if not widget then
-            E:DebugPrint("[ERROR] UIUtils: Failed to create widget of type %s", widgetType)
-            if errorCallback then
-                errorCallback("Failed to create widget of type " .. widgetType)
-            end
-        end
-    else
+    -- OPTIMIZED: Direct creation for performance - AceGUI:Create is generally safe
+    local widget = AceGUI:Create(widgetType)
+    
+    if not widget then
+        E:DebugPrint("[ERROR] UIUtils: Failed to create widget of type %s", widgetType)
         if errorCallback then
-            errorCallback(result)
+            errorCallback("Failed to create widget of type " .. widgetType)
         end
     end
 
@@ -93,19 +83,16 @@ function UIUtils:SetQualityColor(widget, quality)
         return 1, 1, 1 -- Default white
     end
 
+    -- OPTIMIZED: Direct call for performance - color setting is safe
+    local colors = E.Tracker:GetQualityColor(quality)
     local r, g, b = 1, 1, 1 -- Default white
-    local success, colors = self:SafeCall("GetQualityColor", function()
-        return E.Tracker:GetQualityColor(quality)
-    end)
-
-    if success and colors then
+    
+    if colors then
         r, g, b = unpack(colors)
     end
 
-    self:SafeCall("SetWidgetColor", function()
-        widget:SetColor(r, g, b)
-    end)
-
+    -- OPTIMIZED: Direct widget color setting (safe operation)
+    widget:SetColor(r, g, b)
     return r, g, b
 end
 
