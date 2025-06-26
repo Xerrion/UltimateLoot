@@ -1,126 +1,94 @@
-# Copilot Instructions for UltimateLoot
-# ===========================
+# UltimateLoot Copilot Instructions
+This document provides guidelines and standards for contributing to the UltimateLoot addon project. It covers code generation
 
-This file provides guidance to GitHub Copilot when working with code in this repository.
+## AI Development Rules and Guidelines
 
-## Project Overview
+### Code Generation Standards
 
-UltimateLoot is a World of Warcraft addon for WoW 3.3.5a (Wrath of the Lich King) that provides intelligent loot management and comprehensive statistics tracking. It handles loot decisions automatically based on configurable criteria and provides detailed analytics about loot behavior.
+1. **WoW 3.3.5a Compatibility**: Only suggest APIs and features available in Wrath of the Lich King
+2. **Ace3 Framework Usage**: Utilize AceAddon-3.0, AceGUI-3.0, AceDB-3.0, and other Ace3 libraries
+3. **Engine Pattern**: Always access shared functionality through the `E` (Engine) singleton
+4. **Modular Architecture**: Create self-contained modules that register with the Engine
+5. **Event-Driven Design**: Use the custom event system for inter-module communication
 
-## Repository Structure
+### Commit Message Standards
 
-The codebase is organized into the following main directories:
+Follow conventional commits format:
+- `feat(scope): description` - New features
+- `fix(scope): description` - Bug fixes  
+- `chore(scope): description` - Maintenance
+- `style(scope): description` - UI improvements
+- `refactor(scope): description` - Code restructuring
+- `docs(scope): description` - Documentation updates
 
-- `Core/`: Core addon functionality and initialization
-- `Modules/`: Feature-specific modules (Events, ItemRules, Tracker, Debug, etc.)
-- `Settings/`: Default profile and configuration settings
-- `UI/`: User interface components (GraphUI, HistoryUI, ItemsUI, etc.)
-- `Lib/`: Third-party libraries (Ace3, LibSharedMedia, LibDBIcon)
-- `Locales/`: Localization files (enUS, deDE)
+### File Modification Rules
 
-## Architecture
+1. **Read Before Edit**: Always examine current file contents before making changes
+2. **Preserve Formatting**: Maintain existing indentation and spacing patterns
+3. **Contextual Changes**: Provide sufficient context when replacing code sections
+4. **Incremental Updates**: Make small, focused changes rather than large rewrites
+5. **Validation**: Check for syntax errors and logical consistency after edits
 
-UltimateLoot is built on the Ace3 addon framework, following an event-driven, modular architecture:
+### Localization Requirements
 
-1. **Engine (E)**: Central singleton accessible throughout the codebase
-2. **Modules**: Self-contained feature components registered with the Engine
-3. **Events System**: Custom event bus for internal communication
-4. **Settings**: AceDB-3.0 based profile system
+1. **Mandatory L10n**: All user-visible text must use localization keys
+2. **Dual Language Support**: Add entries to both `enUS.lua` and `deDE.lua`
+3. **Key Naming**: Use descriptive UPPERCASE_UNDERSCORE format
+4. **Fallback Handling**: Provide fallback text using `L["KEY"] or "Default text"`
+5. **Logical Grouping**: Organize related strings with descriptive comments
 
-## Key Files and Their Purpose
+### UI Development Guidelines
 
-- `Init.lua`: Entry point that creates the Engine and initializes the addon
-- `Core/Core.lua`: Core functionality setup (localization, database, events)
-- `Modules/UltimateLoot.lua`: Main module handling slash commands and events
-- `Modules/Tracker.lua`: Track and analyze loot decisions
-- `Modules/ItemRules.lua`: Custom rules for specific items
-- `Settings/Profile.lua`: Default settings and configuration
-- `UI/*.lua`: Various UI components for different tabs
+1. **AceGUI Widgets**: Use AceGUI-3.0 components for all interface elements
+2. **Error Resilience**: Wrap UI operations in pcall for graceful error handling
+3. **Responsive Design**: Use relative sizing and proper layout managers
+4. **State Persistence**: Maintain window positions and user preferences
+5. **User Experience**: Provide clear feedback and intuitive interactions
 
-## Development Guidelines
+### Module Development Patterns
 
-### Testing
+1. **Registration**: Use `E:NewModule("ModuleName")` for new modules
+2. **Lifecycle Methods**: Implement OnInitialize, OnEnable, OnDisable as needed
+3. **Event Handling**: Register for appropriate WoW and custom events
+4. **Data Management**: Use AceDB-3.0 through the profile system
+5. **Clean Architecture**: Separate concerns and minimize coupling
 
-UltimateLoot includes built-in testing functionality:
+### Testing and Quality Assurance
 
-```lua
--- Test loot roll functionality
-/ultimateloot test
-/ultimateloot test roll
+1. **Functional Testing**: Verify all features work in-game before committing
+2. **Debug Integration**: Use `E:DebugPrint()` for development logging
+3. **Edge Case Handling**: Test with various configurations and inputs
+4. **Performance Monitoring**: Avoid expensive operations in event handlers
+5. **Memory Management**: Clean up resources properly
 
--- Test item rules functionality
-/ultimateloot test rules
-```
+### Git Workflow Integration
 
-### Slash Commands
+1. **Branch Strategy**: Create feature branches from `main` for all development
+2. **Pull Request Process**: All changes must go through PR review
+3. **Release Management**: Use `release/vX.Y.Z` branches for version preparation
+4. **Version Consistency**: Update `UltimateLoot.toc` version for releases
+5. **Change Documentation**: Maintain detailed CHANGELOG.md entries
 
-UltimateLoot provides several slash commands for development and testing:
+### Error Handling Standards
 
-```
-/ultimateloot or /ul - Main command help
-/ul enable|disable - Toggle addon functionality
-/ul show - Open the main interface
-/ul threshold <quality> - Set quality threshold
-/ul passall - Toggle Pass on All mode
-/ul debug - Debug mode toggle
-/ul debugtab - Open debug tab
-```
+1. **Defensive Programming**: Validate inputs and handle edge cases
+2. **Graceful Degradation**: Continue functioning when non-critical components fail
+3. **User Communication**: Provide clear, actionable error messages
+4. **Debug Information**: Log sufficient detail for troubleshooting
+5. **Recovery Mechanisms**: Implement fallbacks for critical functionality
 
-### Debugging
+### Performance Optimization
 
-Debug mode can be enabled through:
+1. **Efficient Algorithms**: Choose appropriate data structures and algorithms
+2. **Memory Conservation**: Minimize allocations in frequently called code
+3. **Caching Strategy**: Cache expensive computations when beneficial
+4. **Event Efficiency**: Minimize processing in high-frequency event handlers
+5. **Resource Cleanup**: Properly dispose of timers, events, and UI elements
 
-1. Slash command: `/ul debug on`
-2. Settings UI: Check "Enable Debug Mode"
+### Code Documentation
 
-While in debug mode:
-- Additional logging is shown in chat
-- The Debug tab becomes available with test functionality
-
-## Data Structure
-
-The core data structure for statistics:
-
-```lua
-stats = {
-    totalHandled = 0,
-    rollsByType = { pass = 0, need = 0, greed = 0 },
-    rollsByQuality = {
-        [0] = { pass = 0, need = 0, greed = 0 }, -- Poor
-        [1] = { pass = 0, need = 0, greed = 0 }, -- Common
-        [2] = { pass = 0, need = 0, greed = 0 }, -- Uncommon
-        [3] = { pass = 0, need = 0, greed = 0 }, -- Rare
-        [4] = { pass = 0, need = 0, greed = 0 }, -- Epic
-        [5] = { pass = 0, need = 0, greed = 0 }  -- Legendary
-    }
-}
-```
-
-## Common Development Tasks
-
-### Adding a New Feature
-
-1. Create a new feature branch from `main`
-2. Create an appropriate module in the `Modules/` directory
-3. Register it with the Engine using `E:NewModule()`
-4. Add UI components in the `UI/` directory if needed
-5. Update settings in `Settings/Profile.lua` for any new options
-6. Add localization strings in `Locales/*.lua` files
-
-### Adding Localization
-
-Add new localization strings to:
-- `Locales/enUS.lua` (required base)
-- `Locales/deDE.lua` (optional German translation)
-
-Example:
-```lua
-L["NEW_STRING_KEY"] = "English text"
-```
-
-## Recent Changes
-
-Recent development (v2.1.0) has focused on:
-- Adding table headers to History tab
-- Improving visual clarity with better font styling
-- Fixing issues with empty history display
+1. **Function Documentation**: Document all public interfaces with parameter descriptions
+2. **Algorithm Explanation**: Comment complex logic and calculations
+3. **Configuration Documentation**: Explain settings and their effects
+4. **Usage Examples**: Provide clear examples for new features
+5. **Architecture Notes**: Document design decisions and patterns

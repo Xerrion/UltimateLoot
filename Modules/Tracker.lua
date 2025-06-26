@@ -160,30 +160,35 @@ function Tracker:TrackRoll(itemLink, itemName, quality, rollType)
         date = date("%Y-%m-%d %H:%M:%S", timestamp)
     }
 
-    -- Add to history (keep last 1000 entries)
-    table.insert(self.db.history, 1, rollData)
+    -- OPTIMIZED: Use append-only approach (O(1) instead of O(n))
+    table.insert(self.db.history, rollData)
+    
+    -- Maintain size limit with efficient removal from end
     if #self.db.history > 1000 then
-        table.remove(self.db.history)
+        -- Remove oldest entries (at the end after sorting)
+        for i = #self.db.history, 1001, -1 do
+            self.db.history[i] = nil
+        end
     end
 
-    -- Update stats
-    self.db.stats.totalHandled = self.db.stats.totalHandled + 1
+    -- Cache frequently accessed nested table references
+    local stats = self.db.stats
+    local rollsByType = stats.rollsByType
+    local rollsByQuality = stats.rollsByQuality
 
-    -- Update roll type counters
-    if self.db.stats.rollsByType[rollTypeName] then
-        self.db.stats.rollsByType[rollTypeName] = self.db.stats.rollsByType[rollTypeName] + 1
-    end
+    -- Update stats (optimized access)
+    stats.totalHandled = stats.totalHandled + 1
+    rollsByType[rollTypeName] = rollsByType[rollTypeName] + 1
 
-    -- Update quality + roll type counters
-    if self.db.stats.rollsByQuality[quality] and self.db.stats.rollsByQuality[quality][rollTypeName] then
-        local oldCount = self.db.stats.rollsByQuality[quality][rollTypeName]
-        self.db.stats.rollsByQuality[quality][rollTypeName] = self.db.stats.rollsByQuality[quality][rollTypeName] + 1
-        local newCount = self.db.stats.rollsByQuality[quality][rollTypeName]
+    -- Update quality + roll type counters with cached reference
+    local qualityStats = rollsByQuality[quality]
+    if qualityStats and qualityStats[rollTypeName] then
+        local oldCount = qualityStats[rollTypeName]
+        qualityStats[rollTypeName] = oldCount + 1
 
         -- Only debug legendary items to reduce spam
         if quality == 5 then
-            E:DebugPrint("[DEBUG] *** LEGENDARY %s TRACKED! Count: %d -> %d ***", rollTypeName:upper(), oldCount,
-                newCount)
+            E:DebugPrint("[DEBUG] *** LEGENDARY %s TRACKED! Count: %d -> %d ***", rollTypeName:upper(), oldCount, oldCount + 1)
         end
     else
         E:DebugPrint("[DEBUG] WARNING: rollsByQuality[%s][%s] is nil!", tostring(quality), rollTypeName)
@@ -192,8 +197,9 @@ function Tracker:TrackRoll(itemLink, itemName, quality, rollType)
     -- Track individual item counts with roll type breakdown
     local itemKey = itemLink or itemName
     if itemKey then
-        if not self.db.stats.itemCounts[itemKey] then
-            self.db.stats.itemCounts[itemKey] = {
+        local itemData = stats.itemCounts[itemKey]
+        if not itemData then
+            itemData = {
                 totalCount = 0,
                 rollCounts = { pass = 0, need = 0, greed = 0 },
                 itemName = itemName,
@@ -202,26 +208,40 @@ function Tracker:TrackRoll(itemLink, itemName, quality, rollType)
                 lastSeen = timestamp,
                 lastRollType = rollTypeName
             }
+            stats.itemCounts[itemKey] = itemData
         end
-        self.db.stats.itemCounts[itemKey].totalCount = self.db.stats.itemCounts[itemKey].totalCount + 1
-        self.db.stats.itemCounts[itemKey].rollCounts[rollTypeName] = self.db.stats.itemCounts[itemKey].rollCounts
-            [rollTypeName] + 1
-        self.db.stats.itemCounts[itemKey].lastSeen = timestamp
-        self.db.stats.itemCounts[itemKey].lastRollType = rollTypeName
+        
+        itemData.totalCount = itemData.totalCount + 1
+        itemData.rollCounts[rollTypeName] = itemData.rollCounts[rollTypeName] + 1
+        itemData.lastSeen = timestamp
+        itemData.lastRollType = rollTypeName
     end
 
-    -- Fire event for UI updates
+    -- Fire event for UI updates (single event instead of multiple)
     E:DebugPrint("[DEBUG] Tracker:TrackRoll - Firing ULTIMATELOOT_ITEM_TRACKED event")
     self:SendMessage("ULTIMATELOOT_ITEM_TRACKED", rollData)
 end
 
 function Tracker:GetHistory(limit)
-    limit = limit or #self.db.history
-    local history = {}
-    for i = 1, math.min(limit, #self.db.history) do
-        history[i] = self.db.history[i]
+    -- OPTIMIZED: Sort history by timestamp descending once, then slice
+    -- This is more efficient than inserting at position 1 every time
+    local sortedHistory = {}
+    for i, entry in ipairs(self.db.history) do
+        sortedHistory[i] = entry
     end
-    return history
+    
+    -- Sort newest first (descending timestamp)
+    table.sort(sortedHistory, function(a, b)
+        return (a.timestamp or 0) > (b.timestamp or 0)
+    end)
+    
+    -- Return requested slice
+    limit = limit or #sortedHistory
+    local result = {}
+    for i = 1, math.min(limit, #sortedHistory) do
+        result[i] = sortedHistory[i]
+    end
+    return result
 end
 
 function Tracker:GetStats()

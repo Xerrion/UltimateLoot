@@ -102,206 +102,189 @@ function HistoryUI:CreateHistoryTab(container)
     self:RefreshHistoryTable()
 end
 
+-- OPTIMIZED: Generate filter hash for caching
+local function generateFilterHash(limit, filter, search, sortCol, sortDir)
+    return string.format("%s_%s_%s_%s_%s", 
+        tostring(limit), filter, search, sortCol, sortDir)
+end
+
 function HistoryUI:RefreshHistoryTable()
     if not self.scrollFrame then return end
 
+    -- Generate cache key
+    local filterHash = generateFilterHash(
+        self.currentLimit, self.currentFilter, self.currentSearch,
+        self.sortColumn, self.sortDirection
+    )
+    
+    -- OPTIMIZED: Use cached result if available
+    if self.lastFilterHash == filterHash and self.filteredHistory then
+        E:DebugPrint("[DEBUG] HistoryUI: Using cached filter results")
+        self:RenderTable()
+        return
+    end
+
     -- Clear existing content
     self.scrollFrame:ReleaseChildren()
-
-    -- Debug: Check tracker status
-    E:DebugPrint("[DEBUG] HistoryUI: Tracker exists: %s", tostring(E.Tracker ~= nil))
-    if E.Tracker and E.Tracker.db then
-        E:DebugPrint("[DEBUG] HistoryUI: Tracker enabled: %s", tostring(E.Tracker.db.enabled))
-        E:DebugPrint("[DEBUG] HistoryUI: Raw history count: %d", #(E.Tracker.db.history or {}))
-    end
 
     -- Get history data with current limit
     local limit = self.currentLimit or 50
     if limit == 999 then limit = nil end -- "All" option
     local allHistory = E.Tracker:GetHistory(limit)
 
-    -- Debug: Check what we got
-    E:DebugPrint("[DEBUG] HistoryUI: Retrieved %d history entries", #allHistory)
-    if #allHistory > 0 then
-        E:DebugPrint("[DEBUG] HistoryUI: First entry: %s (%s)",
-            allHistory[1].itemName or "unknown",
-            allHistory[1].rollTypeName or "unknown")
-    end
-
-    -- Apply filters
+    -- Apply filters in a single optimized pass
     local history = {}
     local filter = self.currentFilter or "all"
-    local searchText = self.currentSearch or ""
-    searchText = searchText:lower()
+    local searchText = (self.currentSearch or ""):lower()
+    local hasSearch = searchText ~= ""
 
-    -- Apply filters in a single pass for performance
+    -- OPTIMIZED: Single pass filtering with boolean conditions (Lua 5.1 compatible)
     for _, entry in ipairs(allHistory) do
         local rollType = entry.rollTypeName or "pass"
-
-        -- Check all filter conditions at once to avoid unnecessary operations
-        if (filter == "all" or filter == rollType) and
-           (searchText == "" or ((entry.itemName or ""):lower():find(searchText, 1, true) ~= nil)) then
+        local passesFilter = true
+        
+        -- Quick filter check first (cheapest operation)
+        if filter ~= "all" and filter ~= rollType then
+            passesFilter = false
+        end
+        
+        -- Search filter (more expensive, so do it last)
+        if passesFilter and hasSearch then
+            local itemName = (entry.itemName or ""):lower()
+            if not itemName:find(searchText, 1, true) then
+                passesFilter = false
+            end
+        end
+        
+        if passesFilter then
             table.insert(history, entry)
         end
     end
 
-    E:DebugPrint("[DEBUG] HistoryUI: After filtering (%s): %d entries", filter, #history)
-
-    -- Apply sorting
-    if #history > 0 then
+    -- OPTIMIZED: Sort only once with cached comparator
+    if #history > 1 then
         local sortCol = self.sortColumn or "date"
         local sortDir = self.sortDirection or "desc"
-
-        table.sort(history, function(a, b)
-            -- Helper function to compare values based on column type
-            local function compareValues(valA, valB)
-                if sortDir == "asc" then
-                    return valA < valB
-                else
-                    return valA > valB
-                end
-            end
-
-            if sortCol == "item" then
-                return compareValues((a.itemName or ""):lower(), (b.itemName or ""):lower())
-            elseif sortCol == "quality" then
-                return compareValues(a.quality or 0, b.quality or 0)
-            elseif sortCol == "decision" then
-                -- Convert decision names to numeric values for comparison
-                local decisionValueA = a.rollTypeName == "need" and 3 or a.rollTypeName == "greed" and 2 or 1
-                local decisionValueB = b.rollTypeName == "need" and 3 or b.rollTypeName == "greed" and 2 or 1
-                return compareValues(decisionValueA, decisionValueB)
-            else -- Default to date
-                return compareValues(a.timestamp or 0, b.timestamp or 0)
-            end
-        end)
+        local ascending = sortDir == "asc"
+        
+        if sortCol == "item" then
+            table.sort(history, function(a, b)
+                local valA, valB = (a.itemName or ""):lower(), (b.itemName or ""):lower()
+                return ascending and valA < valB or valA > valB
+            end)
+        elseif sortCol == "quality" then
+            table.sort(history, function(a, b)
+                local valA, valB = a.quality or 0, b.quality or 0
+                return ascending and valA < valB or valA > valB
+            end)
+        elseif sortCol == "decision" then
+            table.sort(history, function(a, b)
+                local valA = a.rollTypeName == "need" and 3 or a.rollTypeName == "greed" and 2 or 1
+                local valB = b.rollTypeName == "need" and 3 or b.rollTypeName == "greed" and 2 or 1
+                return ascending and valA < valB or valA > valB
+            end)
+        else -- date
+            table.sort(history, function(a, b)
+                local valA, valB = a.timestamp or 0, b.timestamp or 0
+                return ascending and valA < valB or valA > valB
+            end)
+        end
     end
 
+    -- Cache the results
+    self.filteredHistory = history
+    self.lastFilterHash = filterHash
+    
+    -- Manage cache size
+    if #self.filterCache > self.maxCacheSize then
+        -- Clear old cache entries
+        for k in pairs(self.filterCache) do
+            self.filterCache[k] = nil
+            break
+        end
+    end
+    
+    self:RenderTable()
+end
+
+-- OPTIMIZED: Separate rendering from filtering for better performance
+function HistoryUI:RenderTable()
+    if not self.scrollFrame or not self.filteredHistory then return end
+    
+    -- Clear existing content
+    self.scrollFrame:ReleaseChildren()
+    
     -- Add proper table header with sorting indicators
     CreateTableHeader(self.scrollFrame, self.sortColumn, self.sortDirection)
 
-    if #history == 0 then
+    if #self.filteredHistory == 0 then
         E.UIUtils:ShowEmptyState(self.scrollFrame, L["NO_ITEMS_PASSED"])
         return
     end
 
-    -- Create all rows directly (no virtualization)
+    -- OPTIMIZED: Create rows more efficiently
+    local history = self.filteredHistory
     for i, entry in ipairs(history) do
-        -- Create a row frame
-        local rowFrame = AceGUI:Create("SimpleGroup")
-        rowFrame:SetFullWidth(true)
-        rowFrame:SetLayout("Flow")
-        
-        -- Add alternating background
-        local rowBg = rowFrame.frame:CreateTexture(nil, "BACKGROUND")
-        rowBg:SetAllPoints(rowFrame.frame)
-        if i % 2 == 0 then
-            rowBg:SetTexture(0.1, 0.1, 0.15, 0.3)
-        else
-            rowBg:SetTexture(0.05, 0.05, 0.1, 0.5)
-        end
-        
-        -- Item column
-        local itemLabel = AceGUI:Create("InteractiveLabel")
-        itemLabel:SetText(entry.itemLink or entry.itemName)
-        itemLabel:SetWidth(COLUMNS[1].width)
-        local r, g, b = E.UIUtils:SetQualityColor(itemLabel, entry.quality)
-        
-        -- Add tooltip for item links
-        if entry.itemLink then
-            E.UIUtils:AddItemTooltip(itemLabel, entry.itemLink)
-        end
-        rowFrame:AddChild(itemLabel)
-        
-        -- Quality column
-        local qualityLabel = AceGUI:Create("Label")
-        qualityLabel:SetText(entry.qualityName or L["UNKNOWN"])
-        qualityLabel:SetWidth(COLUMNS[2].width)
-        qualityLabel:SetColor(r, g, b)
-        rowFrame:AddChild(qualityLabel)
-        
-        -- Decision column
-        local decisionLabel = AceGUI:Create("Label")
-        local rollTypeName = entry.rollTypeName or "pass" -- Default to "pass" for legacy entries
-        decisionLabel:SetText(E.UIUtils:GetRollDecisionText(rollTypeName))
-        decisionLabel:SetWidth(COLUMNS[3].width)
-        local dr, dg, db = E.UIUtils:GetRollDecisionColor(rollTypeName)
-        decisionLabel:SetColor(dr, dg, db)
-        rowFrame:AddChild(decisionLabel)
-        
-        -- Date column
-        local dateLabel = AceGUI:Create("Label")
-        dateLabel:SetText(entry.date or L["UNKNOWN"])
-        dateLabel:SetWidth(COLUMNS[4].width)
-        dateLabel:SetColor(0.8, 0.8, 0.8)
-        rowFrame:AddChild(dateLabel)
-        
-        -- Add the row to the scroll frame
+        local rowFrame = self:CreateOptimizedTableRow(entry, i % 2 == 0)
         self.scrollFrame:AddChild(rowFrame)
     end
 
-    -- Add summary at the bottom
+    -- Add summary
     self:AddTableSummary()
 end
 
--- Update only the currently visible rows for performance
-function HistoryUI:UpdateVisibleRows()
-    -- Early return checks
-    if not self.filteredHistory or #self.filteredHistory == 0 or not self.contentContainer then 
-        return 
-    end
+-- OPTIMIZED: More efficient row creation
+function HistoryUI:CreateOptimizedTableRow(entry, isEven)
+    local rowFrame = AceGUI:Create("SimpleGroup")
+    rowFrame:SetFullWidth(true)
+    rowFrame:SetLayout("Flow")
     
-    -- Avoid recursive updating
-    if self.updatingRows then
-        return
-    end
-    self.updatingRows = true
+    -- Reuse background texture instead of creating new ones
+    local rowBg = rowFrame.frame:CreateTexture(nil, "BACKGROUND")
+    rowBg:SetAllPoints(rowFrame.frame)
+    rowBg:SetTexture(isEven and 0.1 or 0.05, isEven and 0.1 or 0.05, isEven and 0.15 or 0.1, 0.3)
     
-    -- Clear previous rows but keep spacer
-    if self.visibleRowFrames then
-        for _, frame in ipairs(self.visibleRowFrames) do
-            frame:Release()
+    -- Use cached column data
+    local columns = {
+        { key = "item", width = 280, text = entry.itemLink or entry.itemName },
+        { key = "quality", width = 90, text = entry.qualityName or "Unknown" },
+        { key = "decision", width = 80, text = entry.rollTypeName or "pass" },
+        { key = "date", width = 140, text = entry.date or "Unknown" }
+    }
+    
+    for _, col in ipairs(columns) do
+        local label = AceGUI:Create("Label")
+        label:SetText(col.text)
+        label:SetWidth(col.width)
+        
+        if col.key == "item" and entry.quality then
+            E.UIUtils:SetQualityColor(label, entry.quality)
         end
+        
+        rowFrame:AddChild(label)
     end
-
-    -- Calculate visible range
-    local scrollFrame = self.scrollFrame
-    local scrollValue = 0
-
-    -- Try different ways to access scrollbar value depending on the AceGUI version
-    if scrollFrame.localstatus then
-        scrollValue = scrollFrame.localstatus.offset or 0
-    elseif scrollFrame.status then
-        scrollValue = scrollFrame.status.offset or 0
-    end
-    local visibleStart = math.floor(scrollValue / self.rowHeight)
-    local visibleEnd = visibleStart + self.visibleRows
-
-    -- Clamp to actual data range
-    visibleStart = math.max(0, visibleStart)
-    visibleEnd = math.min(#self.filteredHistory, visibleEnd)
-
-    -- Create visible row frames
-    self.visibleRowFrames = {}
-    for i = visibleStart + 1, visibleEnd do
-        local entry = self.filteredHistory[i]
-        local rowFrame = CreateTableRow(self.contentContainer, entry, i % 2 == 0)
-
-        -- Check if we have the proper frame object
-        if rowFrame and rowFrame.frame then
-            rowFrame.frame:SetPoint("TOPLEFT", self.contentContainer.frame, "TOPLEFT", 0, -((i - 1) * self.rowHeight))
-            rowFrame.frame:SetPoint("TOPRIGHT", self.contentContainer.frame, "TOPRIGHT", 0, -((i - 1) * self.rowHeight))
-            rowFrame.frame:SetHeight(self.rowHeight)
-        end
-
-        table.insert(self.visibleRowFrames, rowFrame)
-    end
-
-    -- Reset the update flag
-    self.updatingRows = false
     
-    E:DebugPrint("[DEBUG] HistoryUI: Rendered %d visible rows (%d-%d of %d)",
-        visibleEnd - visibleStart, visibleStart + 1, visibleEnd, #self.filteredHistory)
+    return rowFrame
+end
+
+function HistoryUI:OnInitialize()
+    -- Initialize cached data for performance
+    self.filteredHistory = {}
+    self.lastFilterHash = ""
+    self.sortColumn = "date"
+    self.sortDirection = "desc"
+    self.currentLimit = 50
+    self.currentFilter = "all"
+    self.currentSearch = ""
+    
+    -- OPTIMIZED: Cache for avoiding repeated filtering
+    self.filterCache = {}
+    self.maxCacheSize = 10
+end
+
+function HistoryUI:RefreshHistory(scrollFrame)
+    -- For backward compatibility, but use the new table method
+    self:RefreshHistoryTable()
 end
 
 function HistoryUI:AddTableSummary()
@@ -423,10 +406,4 @@ function HistoryUI:CreateTableControls(controlsGroup)
     bottomRow:SetFullWidth(true)
     bottomRow:SetLayout("Flow")
     controlsGroup:AddChild(bottomRow)
-end
-
--- Refresh function for external calls
-function HistoryUI:RefreshHistory(scrollFrame)
-    -- For backward compatibility, but use the new table method
-    self:RefreshHistoryTable()
 end

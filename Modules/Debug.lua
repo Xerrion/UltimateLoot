@@ -7,73 +7,61 @@ E.Debug = Debug
 Debug.debugOutput = {}
 Debug.maxDebugLines = 1000 -- Keep last 1000 debug lines
 
-function Debug:OnInitialize()
-    -- Initialize debug system
-    E:Print("[DEBUG] Debug module OnInitialize called")
+-- OPTIMIZED: Cache debug state and avoid string formatting when debug is disabled
+local isDebugEnabled = false
 
-    -- Confirm the module is accessible
-    if E.Debug == self then
-        E:Print("[DEBUG] Debug module properly registered as E.Debug")
-    else
-        E:Print("[DEBUG] Warning: E.Debug is not pointing to this module!")
-        E:Print("[DEBUG] E.Debug = " .. tostring(E.Debug))
-        E:Print("[DEBUG] self = " .. tostring(self))
-    end
+function Debug:UpdateDebugState()
+    isDebugEnabled = E.db and E.db.debug_mode or false
+end
+
+function Debug:OnInitialize()
+    -- Initialize debug output storage
+    self.debugOutput = {}
+    self.printToChat = false
+    
+    -- OPTIMIZED: Cache debug state
+    self:UpdateDebugState()
+    
+    -- Register for settings changes to update debug state
+    self:RegisterMessage("ULTIMATELOOT_SETTINGS_CHANGED", "UpdateDebugState")
 end
 
 function Debug:OnEnable()
-    -- Module is now fully enabled and ready
-    E:Print("[DEBUG] Debug module OnEnable called - fully ready!")
+    self:UpdateDebugState()
 end
 
 -- Debug print function that only prints when debug mode is enabled
 function Debug:DebugPrint(msg, ...)
-    if not E.db or not E.db.debug_mode then return end
-
-    local formattedMsg
-    if select('#', ...) > 0 then
-        -- Convert nil values to "nil" string to prevent format errors
-        local args = { ... }
-        for i = 1, select('#', ...) do
-            if args[i] == nil then
-                args[i] = "nil"
-            end
-        end
-        -- Use pcall to catch any remaining format errors
-        local success, result = pcall(string.format, msg, unpack(args))
-        if success then
-            formattedMsg = result
-        else
-            -- Fallback: just concatenate the message with the args
-            formattedMsg = msg .. " [Args: " .. table.concat(args, ", ") .. "]"
-        end
-    else
-        formattedMsg = msg
+    if not isDebugEnabled then return end
+    
+    -- Cache the output table reference
+    if not self.debugOutput then
+        self.debugOutput = {}
     end
-
-    -- Add to debug output buffer with timestamp
-    local timestamp = date("[%H:%M:%S]")
-    local debugEntry = {
-        timestamp = timestamp,
+    
+    local timestamp = date("%H:%M:%S")
+    local formattedMsg = string.format("[%s] %s", timestamp, string.format(msg, ...))
+    
+    table.insert(self.debugOutput, formattedMsg)
+    
+    -- Maintain size limit efficiently
+    if #self.debugOutput > 500 then
+        -- Remove oldest 50 entries at once instead of one by one
+        for i = 1, 50 do
+            table.remove(self.debugOutput, 1)
+        end
+    end
+    
+    -- Print to chat if enabled
+    if self.printToChat then
+        print("|cff00ff00[UL Debug]|r " .. formattedMsg)
+    end
+    
+    -- Fire event for UI updates
+    self:SendMessage("ULTIMATELOOT_DEBUG_OUTPUT", {
         message = formattedMsg,
-        fullText = timestamp .. " " .. formattedMsg,
-        time = time()
-    }
-
-    table.insert(self.debugOutput, debugEntry)
-
-    -- Keep only the last maxDebugLines entries
-    if #self.debugOutput > self.maxDebugLines then
-        table.remove(self.debugOutput, 1)
-    end
-
-    -- Fire event for Debug tab to update
-    E:SendMessage("ULTIMATELOOT_DEBUG_OUTPUT", debugEntry)
-
-    -- Also print to chat (optional - can be disabled)
-    if E.db.debug_to_chat ~= false then -- Default to true
-        E:Print(formattedMsg)
-    end
+        timestamp = timestamp
+    })
 end
 
 -- Function to clear debug output
@@ -665,7 +653,7 @@ function Debug:TestStatisticsGeneration()
     E:Print("Quality Breakdown:")
     local qualityNames = { "Poor", "Common", "Uncommon", "Rare", "Epic", "Legendary" }
     for quality = 0, 5 do
-        local rollData = stats.rollsByQuality[quality] or { pass = 0, need = 0, greed = 0 }
+        local rollData = stats.rollsByQuality and stats.rollsByQuality[quality] or { pass = 0, need = 0, greed = 0 }
         local total = rollData.pass + rollData.need + rollData.greed
         if total > 0 then
             E:Print(string.format("  %s: %d total (P:%d N:%d G:%d)",
