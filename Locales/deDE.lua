@@ -25,7 +25,8 @@ L["REMOVE"] = "Entfernen"
 L["PASS_ON_ALL"] = "Auf alle Gegenstände verzichten"
 L["PASS_ON_ALL_DESC"] = "Alle Regeln und Qualitätsschwellen überschreiben - automatisch auf jeden Gegenstand verzichten"
 L["PASS_ON_ALL_WARNING"] =
-"|cffff8000Warnung:|r Modus 'Auf alles verzichten' ist |cffff0000AKTIV|r - alle Regeln und Schwellen werden ignoriert"
+string.format("%sWarnung:%s Modus 'Auf alles verzichten' ist %sAKTIV%s - alle Regeln und Schwellen werden ignoriert", 
+    ORANGE_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE, RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE)
 
 -- Item Rules UI strings
 L["ITEM_RULES_DESC"] = "Automatische Regeln für die Behandlung bestimmter Gegenstände konfigurieren, wenn Beutewürfe erscheinen"
@@ -35,6 +36,22 @@ L["MANAGE_RULES"] = "Regeln verwalten"
 L["ITEM_RULES_MANAGER"] = "Gegenstandsregeln-Manager"
 L["CLEAR_RULES_OF_TYPE"] = "Alle Regeln dieses Typs löschen"
 L["NO_RULES_OF_TYPE"] = "Keine Regeln dieses Typs konfiguriert"
+
+-- Manager window strings
+L["RULES_OVERVIEW"] = "Regelübersicht"
+L["STATUS"] = "Status"
+L["ENABLED"] = "Aktiviert"
+L["DISABLED"] = "Deaktiviert"
+L["IMPORT_EXPORT"] = "Import/Export"
+L["EDIT"] = "Bearbeiten"
+L["SELECT_ALL"] = "Alle auswählen"
+L["CLEAR_ALL"] = "Alle löschen"
+L["CONFIGURED_RULES"] = "Konfigurierte Regeln"
+L["RULE"] = "Regel"
+L["RULES"] = "Regeln"
+L["NO_RULES_OF_TYPE_DETAILED"] = "Keine %s-Regeln konfiguriert.\n\nKlicken Sie unten auf 'Regel hinzufügen' oder verwenden Sie den Hauptbereich, um Ihre erste Regel zu erstellen."
+L["YES"] = "Ja"
+L["NO"] = "Nein"
 
 -- Items tab
 L["NO_ITEMS_PASSED"] = "Es wurden noch keine Gegenstände behandelt."
@@ -56,7 +73,7 @@ L["DATE_COLUMN"] = "Datum"
 -- Summary text
 L["ALL_TYPES"] = "Alle Typen"
 L["FILTER_SUMMARY"] = "Nur %s"
-L["SHOWING_ITEMS_SUMMARY"] = "Zeige %d Gegenstände (%s) | Weitergeben: %d | Bedarf: %d | Gier: %d"
+L["SHOWING_ITEMS_SUMMARY"] = "Zeige %d Gegenstände (%s) | Weitergeben: %d | Bedarf: %d | Gier/Entzaubern: %d"
 
 -- History UI elements
 L["SHOW_LABEL"] = "Zeigen:"
@@ -69,14 +86,14 @@ L["LIMIT_ALL"] = "Alle"
 L["FILTER_ALL"] = "Alle"
 L["FILTER_PASS_ONLY"] = "Nur Weitergeben"
 L["FILTER_NEED_ONLY"] = "Nur Bedarf"
-L["FILTER_GREED_ONLY"] = "Nur Gier"
+L["FILTER_GREED_ONLY"] = "Nur Gier/Entzaubern"
 L["CLEAR_HISTORY_CONFIRM"] = "Sind Sie sicher, dass Sie die Würfelhistorie löschen möchten?\n\nDies kann nicht rückgängig gemacht werden."
 L["UNKNOWN"] = "Unbekannt"
 L["DATE_FORMAT"] = "(JJJJ-MM-TT)"
 
 -- Statistics breakdown
 L["NO_ROLL_DATA"] = "Keine Würfeldaten verfügbar"
-L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Weitergeben:|r %d (%.1f%%)\n|cff0080ffBedarf:|r %d (%.1f%%)\n|cffffaa00Gier:|r %d (%.1f%%)"
+L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Weitergeben:|r %d (%.1f%%)\n|cff0080ffBedarf:|r %d (%.1f%%)\n|cffffaa00Gier/Entzaubern:|r %d (%.1f%%)"
 L["QUALITY_STATS_FORMAT"] = "%s: %d (%.1f%%) - %s"
 L["QUALITY_NO_DATA_FORMAT"] = "%s: 0"
 L["ROLL_STATS_FORMAT"] = "W:%d B:%d G:%d"
@@ -88,3 +105,9 @@ L["ADD_NOTE"] = "Notiz hinzufügen..."
 L["NOTE_PREFIX"] = "Notiz: "
 L["EDIT_NOTE_FOR"] = "Bearbeite Notiz für "
 L["UNKNOWN_ITEM"] = "Gegenstand"
+
+-- Graph tab
+L["HOURLY_ACTIVITY"] = "Stündliche Aktivität (Letzte 24 Stunden)"
+L["HOURLY_ACTIVITY_GRAPH"] = "Aktivitätsdiagramm"
+L["TOTAL_ROLLS_24H"] = "Gesamte Würfe in den letzten 24 Stunden: %d"
+L["GRAPH_SUMMARY_FORMAT"] = "Gesamte Würfe: %d | Durchschnitt pro Stunde: %.1f | Spitze: %d Würfe vor %dh"

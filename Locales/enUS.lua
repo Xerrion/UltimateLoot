@@ -39,7 +39,8 @@ L["PROFILE_INFORMATION"] = "Profile Information"
 L["PASS_ON_ALL"] = "Pass on All Items"
 L["PASS_ON_ALL_DESC"] = "Override all rules and quality thresholds - automatically pass on every item"
 L["PASS_ON_ALL_WARNING"] =
-"|cffff8000Warning:|r Pass on All mode is |cffff0000ACTIVE|r - ignoring all rules and thresholds"
+string.format("%sWarning:%s Pass on All mode is %sACTIVE%s - ignoring all rules and thresholds", 
+    ORANGE_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE, RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE)
 L["SHOW_NOTIFICATIONS"] = "Show Notifications"
 L["SHOW_NOTIFICATIONS_DESC"] = "Display a message when an item is automatically handled"
 L["MAX_HISTORY_ENTRIES"] = "Max History Entries"
@@ -96,7 +97,7 @@ L["LIMIT_ALL"] = "All"
 L["FILTER_ALL"] = "All"
 L["FILTER_PASS_ONLY"] = "Pass Only"
 L["FILTER_NEED_ONLY"] = "Need Only"
-L["FILTER_GREED_ONLY"] = "Greed Only"
+L["FILTER_GREED_ONLY"] = "Greed/Disenchant Only"
 L["CLEAR_HISTORY_CONFIRM"] = "Are you sure you want to clear the roll history?\n\nThis cannot be undone."
 L["UNKNOWN"] = "Unknown"
 L["DATE_FORMAT"] = "(YYYY-MM-DD)"
@@ -104,7 +105,7 @@ L["DATE_FORMAT"] = "(YYYY-MM-DD)"
 -- Roll decision types
 L["PASS_ROLLS"] = "Pass"
 L["NEED_ROLLS"] = "Need"
-L["GREED_ROLLS"] = "Greed"
+L["GREED_ROLLS"] = "Greed/Disenchant"
 L["DECISION"] = "Decision"
 
 -- Date filtering
@@ -122,15 +123,17 @@ L["DATE_COLUMN"] = "Date"
 -- Summary text
 L["ALL_TYPES"] = "All Types"
 L["FILTER_SUMMARY"] = "%s Only"
-L["SHOWING_ITEMS_SUMMARY"] = "Showing %d items (%s) | Pass: %d | Need: %d | Greed: %d"
+L["SHOWING_ITEMS_SUMMARY"] = "Showing %d items (%s) | Pass: %d | Need: %d | Greed/Disenchant: %d"
 
 -- Graph tab
 L["HOURLY_ACTIVITY"] = "Hourly Activity (Last 24 Hours)"
+L["HOURLY_ACTIVITY_GRAPH"] = "Activity Graph"
 L["TOTAL_ROLLS_24H"] = "Total rolls in last 24 hours: %d"
+L["GRAPH_SUMMARY_FORMAT"] = "Total rolls: %d | Average per hour: %.1f | Peak: %d rolls at %dh ago"
 
 -- Statistics breakdown
 L["NO_ROLL_DATA"] = "No roll data available"
-L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Pass:|r %d (%.1f%%)\n|cff0080ffNeed:|r %d (%.1f%%)\n|cffffaa00Greed:|r %d (%.1f%%)"
+L["ROLL_BREAKDOWN_FORMAT"] = "|cffff0000Pass:|r %d (%.1f%%)\n|cff0080ffNeed:|r %d (%.1f%%)\n|cffffaa00Greed/Disenchant:|r %d (%.1f%%)"
 L["QUALITY_STATS_FORMAT"] = "%s: %d (%.1f%%) - %s"
 L["QUALITY_NO_DATA_FORMAT"] = "%s: 0"
 L["ROLL_STATS_FORMAT"] = "P:%d N:%d G:%d"
@@ -146,13 +149,13 @@ L["CHARACTER"] = "Character: |cffffd700%s|r"
 L["REALM"] = "Realm: |cffffd700%s|r"
 L["PROFILE_INFO_FORMAT"] = "Current Profile: |cffffd700%s|r\nCharacter: |cffffd700%s|r\nRealm: |cffffd700%s|r"
 
--- Quality names with colors
-L["QUALITY_POOR"] = "|cff9d9d9dPoor (Gray)|r"
-L["QUALITY_COMMON"] = "|cffffffffCommon (White)|r"
-L["QUALITY_UNCOMMON"] = "|cff1eff00Uncommon (Green)|r"
-L["QUALITY_RARE"] = "|cff0070ddRare (Blue)|r"
-L["QUALITY_EPIC"] = "|cffa335eeEpic (Purple)|r"
-L["QUALITY_LEGENDARY"] = "|cffff8000Legendary (Orange)|r"
+-- Quality names with colors (using WoW's built-in item quality colors)
+L["QUALITY_POOR"] = function() return E.ColorConstants:FormatQualityText("Poor (Gray)", 0) end
+L["QUALITY_COMMON"] = function() return E.ColorConstants:FormatQualityText("Common (White)", 1) end
+L["QUALITY_UNCOMMON"] = function() return E.ColorConstants:FormatQualityText("Uncommon (Green)", 2) end
+L["QUALITY_RARE"] = function() return E.ColorConstants:FormatQualityText("Rare (Blue)", 3) end
+L["QUALITY_EPIC"] = function() return E.ColorConstants:FormatQualityText("Epic (Purple)", 4) end
+L["QUALITY_LEGENDARY"] = function() return E.ColorConstants:FormatQualityText("Legendary (Orange)", 5) end
 
 -- Frame related strings
 L["FRAME_TITLE"] = "%s Frame"
@@ -188,6 +191,8 @@ L["ALWAYS_NEED"] = "Always Need"
 L["ALWAYS_NEED_DESC"] = "Always roll Need on this item"
 L["ALWAYS_GREED"] = "Always Greed"
 L["ALWAYS_GREED_DESC"] = "Always roll Greed on this item"
+L["ALWAYS_GREED_DISENCHANT"] = "Always Greed/Disenchant"
+L["ALWAYS_GREED_DISENCHANT_DESC"] = "Always roll Greed/Disenchant on this item (disenchant if possible)"
 L["ADD_RULE"] = "Add Rule"
 L["CURRENT_RULES"] = "Current Rules"
 L["USE_PATTERN"] = "Use Pattern Matching"
@@ -206,10 +211,12 @@ L["ALWAYS_PASS_RULES"] = "Always Pass Rules"
 L["NEVER_PASS_RULES"] = "Never Pass Rules"
 L["ALWAYS_NEED_RULES"] = "Always Need Rules"
 L["ALWAYS_GREED_RULES"] = "Always Greed Rules"
+L["ALWAYS_GREED_DISENCHANT_RULES"] = "Always Greed/Disenchant Rules"
 L["ALWAYS_PASS_RULES_DESC"] = "These items will always be passed on"
 L["NEVER_PASS_RULES_DESC"] = "These items will never be passed on"
 L["ALWAYS_NEED_RULES_DESC"] = "These items will always be rolled Need"
 L["ALWAYS_GREED_RULES_DESC"] = "These items will always be rolled Greed"
+L["ALWAYS_GREED_DISENCHANT_RULES_DESC"] = "These items will always be rolled Greed/Disenchant"
 L["RULE_MANAGEMENT"] = "Rule Management"
 L["TEST_RULES"] = "Test Rules"
 L["CLEAR_ALL_RULES"] = "Clear All Rules"
@@ -224,3 +231,19 @@ L["MANAGE_RULES"] = "Manage Rules"
 L["ITEM_RULES_MANAGER"] = "Item Rules Manager"
 L["CLEAR_RULES_OF_TYPE"] = "Clear All Rules of This Type"
 L["NO_RULES_OF_TYPE"] = "No rules of this type configured"
+
+-- Manager window strings
+L["RULES_OVERVIEW"] = "Rules Overview"
+L["STATUS"] = "Status"
+L["ENABLED"] = "Enabled"
+L["DISABLED"] = "Disabled"
+L["IMPORT_EXPORT"] = "Import/Export"
+L["EDIT"] = "Edit"
+L["SELECT_ALL"] = "Select All"
+L["CLEAR_ALL"] = "Clear All"
+L["CONFIGURED_RULES"] = "Configured Rules"
+L["RULE"] = "rule"
+L["RULES"] = "rules"
+L["NO_RULES_OF_TYPE_DETAILED"] = "No %s rules configured.\n\nClick 'Add Rule' below or use the main tab to create your first rule."
+L["YES"] = "Yes"
+L["NO"] = "No"
