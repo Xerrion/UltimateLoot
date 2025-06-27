@@ -27,22 +27,32 @@ function UIUtils:SafeCall(funcName, func, ...)
         E:DebugPrint("[ERROR] UIUtils: %s failed - %s", funcName or "Function", result or "Unknown error")
         -- Display a user-friendly message if in debug mode
         if E.db and E.db.debug_mode then
-            E:Print("|cffff0000Error in " .. (funcName or "function") .. ":|r " .. (result or "Unknown error"))
+            E:Print(E.ColorConstants:FormatText("Error in " .. (funcName or "function") .. ":", "ERROR") .. " " .. (result or "Unknown error"))
         end
         return false, result
     end
     return true, result
 end
 
--- Create UI elements safely - OPTIMIZED for common case
+-- Create UI elements safely
 function UIUtils:SafeCreateWidget(widgetType, errorCallback)
-    -- OPTIMIZED: Direct creation for performance - AceGUI:Create is generally safe
-    local widget = AceGUI:Create(widgetType)
-    
-    if not widget then
-        E:DebugPrint("[ERROR] UIUtils: Failed to create widget of type %s", widgetType)
+    local widget
+
+    local success, result = self:SafeCall("CreateWidget(" .. widgetType .. ")", function()
+        return AceGUI:Create(widgetType)
+    end)
+
+    if success then
+        widget = result
+        if not widget then
+            E:DebugPrint("[ERROR] UIUtils: Failed to create widget of type %s", widgetType)
+            if errorCallback then
+                errorCallback("Failed to create widget of type " .. widgetType)
+            end
+        end
+    else
         if errorCallback then
-            errorCallback("Failed to create widget of type " .. widgetType)
+            errorCallback(result)
         end
     end
 
@@ -83,27 +93,36 @@ function UIUtils:SetQualityColor(widget, quality)
         return 1, 1, 1 -- Default white
     end
 
-    -- OPTIMIZED: Direct call for performance - color setting is safe
-    local colors = E.Tracker:GetQualityColor(quality)
     local r, g, b = 1, 1, 1 -- Default white
-    
-    if colors then
+    local success, colors = self:SafeCall("GetQualityColor", function()
+        return E.Tracker:GetQualityColor(quality)
+    end)
+
+    if success and colors then
         r, g, b = unpack(colors)
     end
 
-    -- OPTIMIZED: Direct widget color setting (safe operation)
-    widget:SetColor(r, g, b)
+    self:SafeCall("SetWidgetColor", function()
+        widget:SetColor(r, g, b)
+    end)
+
     return r, g, b
 end
 
 -- Get color for roll decision type
 function UIUtils:GetRollDecisionColor(rollTypeName)
     if rollTypeName == "need" then
-        return 0.12, 1, 0    -- Green (like Uncommon items)
+        -- Use WoW's default uncommon green color
+        local color = E.ColorConstants.COLORS.UNCOMMON
+        return color[1], color[2], color[3]
     elseif rollTypeName == "greed" then
-        return 0, 0.44, 0.87 -- Blue (like Rare items)
+        -- Use WoW's default rare blue color
+        local color = E.ColorConstants.COLORS.RARE
+        return color[1], color[2], color[3]
     else                     -- "pass" or nil (legacy)
-        return 0.8, 0.8, 0.8 -- Light gray
+        -- Use WoW's default disabled gray color
+        local color = E.ColorConstants.COLORS.DISABLED
+        return color[1], color[2], color[3]
     end
 end
 
@@ -211,10 +230,12 @@ function UIUtils:CreateTableHeader(scrollFrame, columns, sortInfo)
     headerFrame:SetFullWidth(true)
     headerFrame:SetLayout("Flow")
 
-    -- Create header background (WoW 3.3.5a compatible)
+    -- Create header background using WoW's default colors
     local headerBg = headerFrame.frame:CreateTexture(nil, "BACKGROUND")
     headerBg:SetAllPoints(headerFrame.frame)
-    headerBg:SetTexture(0.2, 0.2, 0.3, 0.8)
+    -- Use a slightly darker version of WoW's default normal color
+    local normalColor = E.ColorConstants.COLORS.NORMAL
+    headerBg:SetTexture(normalColor[1] * 0.3, normalColor[2] * 0.3, normalColor[3] * 0.3, 0.8)
 
     for _, column in ipairs(columns) do
         -- Create an interactive label for headers to support clicking
@@ -229,7 +250,9 @@ function UIUtils:CreateTableHeader(scrollFrame, columns, sortInfo)
         header:SetText(headerText)
         header:SetWidth(column.width)
         header:SetFontObject(GameFontNormalLarge)
-        header:SetColor(1, 1, 1)
+        -- Use WoW's default highlight color
+        local highlightColor = E.ColorConstants.COLORS.HIGHLIGHT
+        header:SetColor(highlightColor[1], highlightColor[2], highlightColor[3])
 
         -- Make headers clickable for sorting if sort callback is provided
         if sortInfo and sortInfo.callback then
@@ -237,13 +260,15 @@ function UIUtils:CreateTableHeader(scrollFrame, columns, sortInfo)
                 sortInfo.callback(column.key)
             end)
 
-            -- Add hover effect to indicate clickable headers
+            -- Add hover effect using WoW's default warning color (gold/yellow)
             header:SetCallback("OnEnter", function(widget)
-                widget:SetColor(1, 1, 0) -- Yellow on hover
+                local warningColor = E.ColorConstants.COLORS.WARNING
+                widget:SetColor(warningColor[1], warningColor[2], warningColor[3])
             end)
 
             header:SetCallback("OnLeave", function(widget)
-                widget:SetColor(1, 1, 1) -- White when not hovering
+                local highlightColor = E.ColorConstants.COLORS.HIGHLIGHT
+                widget:SetColor(highlightColor[1], highlightColor[2], highlightColor[3])
             end)
         end
 
@@ -260,13 +285,17 @@ function UIUtils:CreateTableRow(scrollFrame, isEven)
     rowFrame:SetFullWidth(true)
     rowFrame:SetLayout("Flow")
 
-    -- Add alternating row background (WoW 3.3.5a compatible)
+    -- Add alternating row background using WoW's default colors
     local rowBg = rowFrame.frame:CreateTexture(nil, "BACKGROUND")
     rowBg:SetAllPoints(rowFrame.frame)
     if isEven then
-        rowBg:SetTexture(0.1, 0.1, 0.15, 0.3)
+        -- Use a very subtle version of WoW's disabled color for even rows
+        local disabledColor = E.ColorConstants.COLORS.DISABLED
+        rowBg:SetTexture(disabledColor[1] * 0.2, disabledColor[2] * 0.2, disabledColor[3] * 0.2, 0.3)
     else
-        rowBg:SetTexture(0.05, 0.05, 0.1, 0.5)
+        -- Use an even more subtle version for odd rows
+        local disabledColor = E.ColorConstants.COLORS.DISABLED
+        rowBg:SetTexture(disabledColor[1] * 0.1, disabledColor[2] * 0.1, disabledColor[3] * 0.1, 0.5)
     end
 
     scrollFrame:AddChild(rowFrame)
