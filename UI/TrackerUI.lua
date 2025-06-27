@@ -10,7 +10,7 @@ local selectedTab = "history"
 -- Helper function to generate title with status
 local function GetFrameTitle()
     local enabled = E:GetEnabled()
-    local status = enabled and "|cff00ff00ENABLED|r" or "|cffff0000DISABLED|r"
+    local status = enabled and E.ColorConstants:FormatText("ENABLED", "SUCCESS") or E.ColorConstants:FormatText("DISABLED", "ERROR")
     return L["MAIN_FRAME_TITLE"] .. " [" .. status .. "]"
 end
 
@@ -236,22 +236,13 @@ end
 function TrackerUI:OnEnable()
     E:DebugPrint("[DEBUG] TrackerUI:OnEnable - Registering for events")
 
-    -- OPTIMIZED: Combine tab refresh logic to reduce redundant calls
-    local function refreshIfRelevantTab(relevantTabs)
-        if not selectedTab then return end
-        
-        for _, tab in ipairs(relevantTabs) do
-            if selectedTab == tab then
-                RefreshCurrentTab(self)
-                return
-            end
-        end
-    end
-
     -- Register for updates
     self:RegisterMessage("ULTIMATELOOT_ITEM_TRACKED", function()
         E:DebugPrint("[DEBUG] TrackerUI - ULTIMATELOOT_ITEM_TRACKED event received")
-        refreshIfRelevantTab({"history", "items"})
+        if (selectedTab == "history" or selectedTab == "items") then
+            E:DebugPrint("[DEBUG] TrackerUI - Refreshing tab due to ULTIMATELOOT_ITEM_TRACKED")
+            RefreshCurrentTab(self)
+        end
     end)
 
     self:RegisterMessage("ULTIMATELOOT_HISTORY_CLEARED", function()
@@ -262,7 +253,10 @@ function TrackerUI:OnEnable()
     -- Enhanced event handling for new event-driven architecture
     self:RegisterMessage("ULTIMATELOOT_STATS_RESET", function()
         E:DebugPrint("[DEBUG] TrackerUI - ULTIMATELOOT_STATS_RESET event received")
-        refreshIfRelevantTab({"stats", "graph"})
+        if (selectedTab == "stats" or selectedTab == "graph") then
+            E:DebugPrint("[DEBUG] TrackerUI - Refreshing tab due to ULTIMATELOOT_STATS_RESET")
+            RefreshCurrentTab(self)
+        end
     end)
 
     self:RegisterMessage("ULTIMATELOOT_ALL_DATA_CLEARED", function()
@@ -275,59 +269,81 @@ function TrackerUI:OnEnable()
             tostring(enabled))
 
         -- Update settings tab if visible
-        refreshIfRelevantTab({"settings"})
+        if selectedTab == "settings" then
+            E:DebugPrint("[DEBUG] TrackerUI - Refreshing settings tab due to ULTIMATELOOT_ENABLED_CHANGED")
+            RefreshCurrentTab(self)
+        end
 
         -- Update main frame title with current status
         if mainFrame then
             mainFrame:SetTitle(GetFrameTitle())
+            E:DebugPrint("[DEBUG] TrackerUI - Updated main frame title with status")
         end
     end)
 
     self:RegisterMessage("ULTIMATELOOT_THRESHOLD_CHANGED", function(_, newThreshold, oldThreshold)
         E:DebugPrint("[DEBUG] TrackerUI - ULTIMATELOOT_THRESHOLD_CHANGED event received: %s -> %s",
-            tostring(oldThreshold), tostring(newThreshold))
+            tostring(oldThreshold),
+            tostring(newThreshold))
 
         -- Update settings tab if visible
-        refreshIfRelevantTab({"settings"})
+        if selectedTab == "settings" then
+            E:DebugPrint("[DEBUG] TrackerUI - Refreshing settings tab due to ULTIMATELOOT_THRESHOLD_CHANGED")
+            RefreshCurrentTab(self)
+        end
     end)
 
     self:RegisterMessage("ULTIMATELOOT_STATE_CHANGED", function(_, changeData)
         E:DebugPrint("[DEBUG] TrackerUI - ULTIMATELOOT_STATE_CHANGED event received: %s (%s -> %s)",
             changeData.type, tostring(changeData.oldValue), tostring(changeData.newValue))
 
-        -- Handle generic state changes - OPTIMIZED: Direct tab check
-        if (changeData.type == "enabled" or changeData.type == "threshold") and selectedTab == "settings" then
-            RefreshCurrentTab(self)
+        -- Handle generic state changes
+        E:Log("Debug", "UltimateLoot state changed: %s from %s to %s",
+            changeData.type, tostring(changeData.oldValue), tostring(changeData.newValue))
+
+        -- Update UI based on change type
+        if changeData.type == "enabled" or changeData.type == "threshold" then
+            if selectedTab == "settings" then
+                E:DebugPrint("[DEBUG] TrackerUI - Refreshing settings tab due to ULTIMATELOOT_STATE_CHANGED")
+                RefreshCurrentTab(self)
+            end
         end
     end)
 
     self:RegisterMessage("ULTIMATELOOT_DATA_CHANGED", function(_, changeData)
         E:DebugPrint("[DEBUG] TrackerUI - ULTIMATELOOT_DATA_CHANGED event received: %s", changeData.type)
 
-        -- OPTIMIZED: Use lookup table for performance
-        local refreshMap = {
-            history_cleared = {"history", "items"},
-            stats_cleared = {"stats", "graph"},
-            all_data_cleared = true -- Special case - always refresh
-        }
-        
-        local relevantTabs = refreshMap[changeData.type]
-        if relevantTabs == true then
+        -- Handle data changes with specific refresh logic
+        if changeData.type == "history_cleared" then
+            if selectedTab == "history" or selectedTab == "items" then
+                E:DebugPrint("[DEBUG] TrackerUI - Refreshing tabs due to history_cleared")
+                RefreshCurrentTab(self)
+            end
+        elseif changeData.type == "stats_cleared" then
+            if selectedTab == "stats" or selectedTab == "graph" then
+                E:DebugPrint("[DEBUG] TrackerUI - Refreshing tabs due to stats_cleared")
+                RefreshCurrentTab(self)
+            end
+        elseif changeData.type == "all_data_cleared" then
+            E:DebugPrint("[DEBUG] TrackerUI - Refreshing all tabs due to all_data_cleared")
             RefreshCurrentTab(self)
-        elseif relevantTabs then
-            refreshIfRelevantTab(relevantTabs)
         end
     end)
 
-    -- OPTIMIZED: Combine debug event handlers
-    local function handleDebugEvents()
+    -- Debug output event handlers
+    self:RegisterMessage("ULTIMATELOOT_DEBUG_OUTPUT", function(_, debugEntry)
+        -- Update debug tab if it's currently visible and Debug module exists
         if selectedTab == "debug" and E.Debug then
             E.Debug:RefreshDebugOutput()
         end
-    end
+    end)
 
-    self:RegisterMessage("ULTIMATELOOT_DEBUG_OUTPUT", handleDebugEvents)
-    self:RegisterMessage("ULTIMATELOOT_DEBUG_CLEARED", handleDebugEvents)
+    self:RegisterMessage("ULTIMATELOOT_DEBUG_CLEARED", function()
+        -- Update debug tab if it's currently visible and Debug module exists
+        if selectedTab == "debug" and E.Debug then
+            E.Debug:RefreshDebugOutput()
+        end
+    end)
 
     E:DebugPrint("[DEBUG] TrackerUI:OnEnable - Event registration complete")
 end

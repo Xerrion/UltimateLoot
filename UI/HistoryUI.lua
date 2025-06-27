@@ -180,19 +180,44 @@ function HistoryUI:RefreshHistoryTable()
             table.sort(history, function(a, b)
                 if not a or not b then return false end
                 local valA, valB = (a.itemName or ""):lower(), (b.itemName or ""):lower()
+                -- Ensure consistent ordering by adding secondary sort if names are equal
+                if valA == valB then
+                    local timestampA = a.timestamp or 0
+                    local timestampB = b.timestamp or 0
+                    return ascending and timestampA < timestampB or timestampA > timestampB
+                end
                 return ascending and valA < valB or valA > valB
             end)
         elseif sortCol == "quality" then
             table.sort(history, function(a, b)
                 if not a or not b then return false end
                 local valA, valB = a.quality or 0, b.quality or 0
+                -- Ensure consistent ordering by adding secondary sort if qualities are equal
+                if valA == valB then
+                    local timestampA = a.timestamp or 0
+                    local timestampB = b.timestamp or 0
+                    return ascending and timestampA < timestampB or timestampA > timestampB
+                end
                 return ascending and valA < valB or valA > valB
             end)
         elseif sortCol == "decision" then
             table.sort(history, function(a, b)
                 if not a or not b then return false end
-                local valA = a.rollTypeName == "need" and 3 or a.rollTypeName == "greed" and 2 or 1
-                local valB = b.rollTypeName == "need" and 3 or b.rollTypeName == "greed" and 2 or 1
+                -- Handle nil rollTypeName gracefully with default values
+                local rollTypeA = a.rollTypeName or "pass"
+                local rollTypeB = b.rollTypeName or "pass"
+                
+                -- Assign numeric values: need=3, greed=2, pass=1
+                local valA = rollTypeA == "need" and 3 or (rollTypeA == "greed" and 2 or 1)
+                local valB = rollTypeB == "need" and 3 or (rollTypeB == "greed" and 2 or 1)
+                
+                -- Ensure consistent ordering by adding secondary sort on timestamp if values are equal
+                if valA == valB then
+                    local timestampA = a.timestamp or 0
+                    local timestampB = b.timestamp or 0
+                    return ascending and timestampA < timestampB or timestampA > timestampB
+                end
+                
                 return ascending and valA < valB or valA > valB
             end)
         else -- date

@@ -12,11 +12,6 @@ function SettingsUI:SetRefreshCallback(callback)
 end
 
 function SettingsUI:CreateSettingsTab(container)
-    -- Cache frequently accessed values
-    local db = E.db
-    local enabled = E:GetEnabled()
-    local threshold = E:GetLootQualityThreshold()
-    
     -- Main settings scroll frame
     local scrollFrame = AceGUI:Create("ScrollFrame")
     scrollFrame:SetLayout("Flow")
@@ -35,7 +30,7 @@ function SettingsUI:CreateSettingsTab(container)
     local enabledCheckbox = AceGUI:Create("CheckBox")
     enabledCheckbox:SetLabel(L["ENABLE_ULTIMATELOOT"])
     enabledCheckbox:SetDescription(L["ENABLE_ULTIMATELOOT_DESC"])
-    enabledCheckbox:SetValue(enabled)
+    enabledCheckbox:SetValue(E:GetEnabled())
     enabledCheckbox:SetFullWidth(true)
     enabledCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
         E:SetEnabled(value)
@@ -46,30 +41,28 @@ function SettingsUI:CreateSettingsTab(container)
     local minimapCheckbox = AceGUI:Create("CheckBox")
     minimapCheckbox:SetLabel(L["SHOW_MINIMAP_ICON"])
     minimapCheckbox:SetDescription(L["SHOW_MINIMAP_ICON_DESC"])
-    minimapCheckbox:SetValue(not db.minimap.hide)
+    minimapCheckbox:SetValue(not E.db.minimap.hide)
     minimapCheckbox:SetFullWidth(true)
     minimapCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
-        local minimapIcon = E.MinimapIcon
-        if minimapIcon then
+        if E.MinimapIcon then
             if value then
-                minimapIcon:Show()
+                E.MinimapIcon:Show()
             else
-                minimapIcon:Hide()
+                E.MinimapIcon:Hide()
             end
         end
     end)
     generalGroup:AddChild(minimapCheckbox)
+
 
     -- Loot Quality Threshold
     local qualityDropdown = AceGUI:Create("Dropdown")
     qualityDropdown:SetLabel(L["LOOT_QUALITY_THRESHOLD"])
     qualityDropdown:SetText(L["LOOT_QUALITY_THRESHOLD_TEXT"])
 
-    -- Set up ordered quality list (maintains WoW quality hierarchy)
-    local qualityOrder = { "poor", "common", "uncommon", "rare", "epic", "legendary" }
+    -- Set up ordered quality list 
+    local qualityOrder = { "uncommon", "rare", "epic", "legendary" }
     local qualityLabels = {
-        poor = L["QUALITY_POOR"],
-        common = L["QUALITY_COMMON"],
         uncommon = L["QUALITY_UNCOMMON"],
         rare = L["QUALITY_RARE"],
         epic = L["QUALITY_EPIC"],
@@ -77,7 +70,7 @@ function SettingsUI:CreateSettingsTab(container)
     }
 
     qualityDropdown:SetList(qualityLabels, qualityOrder)
-    qualityDropdown:SetValue(threshold)
+    qualityDropdown:SetValue(E:GetLootQualityThreshold())
     qualityDropdown:SetFullWidth(true)
     qualityDropdown:SetCallback("OnValueChanged", function(widget, event, value)
         E:SetLootQualityThreshold(value)
@@ -96,11 +89,10 @@ function SettingsUI:CreateSettingsTab(container)
     local passOnAllCheckbox = AceGUI:Create("CheckBox")
     passOnAllCheckbox:SetLabel(L["PASS_ON_ALL"])
     passOnAllCheckbox:SetDescription(L["PASS_ON_ALL_DESC"])
-    local passOnAllValue = db.pass_on_all or false
-    passOnAllCheckbox:SetValue(passOnAllValue)
+    passOnAllCheckbox:SetValue(E.db.pass_on_all or false)
     passOnAllCheckbox:SetFullWidth(true)
     passOnAllCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
-        db.pass_on_all = value
+        E.db.pass_on_all = value
         if value then
             E:Print(L["PASS_ON_ALL_WARNING"])
         else
@@ -110,7 +102,7 @@ function SettingsUI:CreateSettingsTab(container)
     generalGroup:AddChild(passOnAllCheckbox)
 
     -- Warning label if Pass on All is active
-    if passOnAllValue then
+    if E.db.pass_on_all then
         local warningLabel = AceGUI:Create("Label")
         warningLabel:SetText(L["PASS_ON_ALL_WARNING"])
         warningLabel:SetFullWidth(true)
@@ -129,10 +121,10 @@ function SettingsUI:CreateSettingsTab(container)
     local notificationsCheckbox = AceGUI:Create("CheckBox")
     notificationsCheckbox:SetLabel(L["SHOW_NOTIFICATIONS"])
     notificationsCheckbox:SetDescription(L["SHOW_NOTIFICATIONS_DESC"])
-    notificationsCheckbox:SetValue(db.show_notifications or true)
+    notificationsCheckbox:SetValue(E.db.show_notifications or true)
     notificationsCheckbox:SetFullWidth(true)
     notificationsCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
-        db.show_notifications = value
+        E.db.show_notifications = value
     end)
     trackerGroup:AddChild(notificationsCheckbox)
 
@@ -140,19 +132,18 @@ function SettingsUI:CreateSettingsTab(container)
     local debugModeCheckbox = AceGUI:Create("CheckBox")
     debugModeCheckbox:SetLabel(L["ENABLE_DEBUG_MODE"])
     debugModeCheckbox:SetDescription(L["ENABLE_DEBUG_MODE_DESC"])
-    debugModeCheckbox:SetValue(db.debug_mode or false)
+    debugModeCheckbox:SetValue(E.db.debug_mode or false)
     debugModeCheckbox:SetFullWidth(true)
     debugModeCheckbox:SetCallback("OnValueChanged", function(widget, event, value)
-        db.debug_mode = value
+        E.db.debug_mode = value
         if value then
             E:Print("Debug mode enabled. Debug tab is now available.")
         else
             E:Print("Debug mode disabled. Debug tab will be hidden.")
         end
         -- Rebuild tabs to show/hide debug tab appropriately
-        local trackerUI = E.TrackerUI
-        if trackerUI and trackerUI.RebuildTabs then
-            trackerUI:RebuildTabs()
+        if E.TrackerUI and E.TrackerUI.RebuildTabs then
+            E.TrackerUI:RebuildTabs()
         end
     end)
     trackerGroup:AddChild(debugModeCheckbox)
@@ -160,16 +151,15 @@ function SettingsUI:CreateSettingsTab(container)
     -- Max history entries
     local maxHistoryEditbox = AceGUI:Create("EditBox")
     maxHistoryEditbox:SetLabel(L["MAX_HISTORY_ENTRIES"])
-    local maxHistory = db.max_history or 1000
-    maxHistoryEditbox:SetText(tostring(maxHistory))
+    maxHistoryEditbox:SetText(tostring(E.db.max_history or 1000))
     maxHistoryEditbox:SetWidth(200)
     maxHistoryEditbox:SetCallback("OnEnterPressed", function(widget, event, text)
         local num = tonumber(text)
         if num and num > 0 and num <= 10000 then
-            db.max_history = num
+            E.db.max_history = num
             widget:SetText(tostring(num))
         else
-            widget:SetText(tostring(db.max_history or 1000))
+            widget:SetText(tostring(E.db.max_history or 1000))
         end
     end)
     trackerGroup:AddChild(maxHistoryEditbox)

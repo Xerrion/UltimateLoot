@@ -9,11 +9,6 @@ local AceGUI = E.Libs.AceGUI
 function StatisticsUI:CreateStatsTab(container)
     local stats = E.Tracker:GetStats()
 
-    -- OPTIMIZED: Cache frequently accessed values
-    local totalHandled = stats.totalHandled or 0
-    local rollsByType = stats.rollsByType
-    local rollsByQuality = stats.rollsByQuality
-
     -- Overall stats
     local overallGroup = AceGUI:Create("InlineGroup")
     overallGroup:SetTitle(L["OVERALL_STATISTICS"])
@@ -22,23 +17,22 @@ function StatisticsUI:CreateStatsTab(container)
     container:AddChild(overallGroup)
 
     local totalLabel = AceGUI:Create("Label")
-    totalLabel:SetText(string.format(L["TOTAL_ITEMS_HANDLED"], totalHandled))
+    totalLabel:SetText(string.format(L["TOTAL_ITEMS_HANDLED"], stats.totalHandled or 0))
     totalLabel:SetFontObject(GameFontNormalLarge)
     totalLabel:SetFullWidth(true)
     overallGroup:AddChild(totalLabel)
 
     -- Roll type breakdown
-    if rollsByType then
+    if stats.rollsByType then
         local rollTypeGroup = AceGUI:Create("InlineGroup")
         rollTypeGroup:SetTitle(L["ROLL_TYPE_BREAKDOWN"])
         rollTypeGroup:SetFullWidth(true)
         rollTypeGroup:SetLayout("Flow")
         container:AddChild(rollTypeGroup)
 
-        -- OPTIMIZED: Cache roll counts once
-        local passCount = rollsByType.pass or 0
-        local needCount = rollsByType.need or 0
-        local greedCount = rollsByType.greed or 0
+        local passCount = stats.rollsByType.pass or 0
+        local needCount = stats.rollsByType.need or 0
+        local greedCount = stats.rollsByType.greed or 0
         local total = passCount + needCount + greedCount
 
         if total > 0 then
@@ -60,7 +54,7 @@ function StatisticsUI:CreateStatsTab(container)
         end
     end
 
-    -- Timeframe stats - OPTIMIZED: Get all timeframes in one section
+    -- Timeframe stats
     local timeGroup = AceGUI:Create("InlineGroup")
     timeGroup:SetTitle(L["RECENT_ACTIVITY"])
     timeGroup:SetFullWidth(true)
@@ -82,25 +76,21 @@ function StatisticsUI:CreateStatsTab(container)
     timeLabel:SetFullWidth(true)
     timeGroup:AddChild(timeLabel)
 
-    -- Quality breakdown - OPTIMIZED: Reduce function calls in loop
+    -- Quality breakdown
     local qualityGroup = AceGUI:Create("InlineGroup")
     qualityGroup:SetTitle(L["QUALITY_BREAKDOWN"])
     qualityGroup:SetFullWidth(true)
     qualityGroup:SetLayout("Flow")
     container:AddChild(qualityGroup)
 
-    -- OPTIMIZED: Pre-calculate values outside loop to avoid repeated calls
-    local totalHandledForPercent = totalHandled > 0 and totalHandled or 1 -- Avoid division by zero
-    
-    for quality = 0, 5 do
-        local rollData = rollsByQuality and rollsByQuality[quality] or { pass = 0, need = 0, greed = 0 }
+    for quality = 2, 5 do -- Only show uncommon and above
+        local rollData = stats.rollsByQuality and stats.rollsByQuality[quality] or { pass = 0, need = 0, greed = 0 }
         local totalForQuality = rollData.pass + rollData.need + rollData.greed
-        
         local qualityLabel = AceGUI:Create("Label")
         local qualityName = E.Tracker:GetQualityName(quality)
 
         if totalForQuality > 0 then
-            local percentage = (totalForQuality / totalHandledForPercent) * 100
+            local percentage = (totalForQuality / (stats.totalHandled or 1)) * 100
             local breakdown = string.format(L["ROLL_STATS_FORMAT"], rollData.pass, rollData.need, rollData.greed)
             qualityLabel:SetText(string.format(L["QUALITY_STATS_FORMAT"], qualityName, totalForQuality, percentage,
                 breakdown))
