@@ -13,7 +13,7 @@ UltimateLoot is an intelligent addon that automates loot decisions while providi
 - **Real-time notifications**: Know when and why decisions were made
 
 ### 📊 Comprehensive Analytics
-- **Individual roll tracking**: Pass, Need, and Greed statistics
+- **Individual roll tracking**: Pass, Need, and Greed/Disenchant statistics
 - **Quality breakdowns**: See patterns across item qualities
 - **Time-based analysis**: Track behavior over different periods
 - **Top items tracking**: Identify most frequently encountered items
@@ -40,7 +40,7 @@ UltimateLoot is an intelligent addon that automates loot decisions while providi
 ## Quick Start
 
 1. **Enable the addon**: `/ul enable`
-2. **Set quality threshold**: `/ul threshold rare` (passes on Poor→Rare, asks for Epic+)
+2. **Set quality threshold**: `/ul threshold rare` (handles Uncommon automatically, asks for Rare+)
 3. **Open interface**: `/ul show` or click the minimap icon
 4. **View statistics**: Check the Statistics tab to see your roll patterns
 
@@ -56,8 +56,7 @@ UltimateLoot is an intelligent addon that automates loot decisions while providi
 
 ## Quality Thresholds
 
-- **Poor** (Gray) - Vendor trash
-- **Common** (White) - Basic items
+**Note**: This addon only handles Uncommon (Green) and higher quality items.
 - **Uncommon** (Green) - Quest rewards, low-level gear
 - **Rare** (Blue) - Dungeon drops, crafted items
 - **Epic** (Purple) - Raid gear, high-end items
@@ -68,7 +67,8 @@ UltimateLoot is an intelligent addon that automates loot decisions while providi
 The addon provides extensive configuration options:
 
 - **Loot Quality Threshold**: Automatically handle items up to this quality
-- **Pass on All**: Emergency override to pass on everything
+- **Pass on All**: Emergency override to pass on everything  
+- **Smart Disenchanting**: When items would be passed, automatically disenchant if possible (unless "Pass on All" is active)
 - **Notifications**: Toggle roll decision messages
 - **Minimap Icon**: Show/hide minimap button
 - **Debug Mode**: Enable advanced debugging and testing tools
