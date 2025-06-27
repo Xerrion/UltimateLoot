@@ -54,7 +54,7 @@ function Debug:DebugPrint(msg, ...)
     
     -- Print to chat if enabled
     if self.printToChat then
-        print("|cff00ff00[UL Debug]|r " .. formattedMsg)
+        print(E.ColorConstants:FormatText("[UL Debug]", "SUCCESS") .. " " .. formattedMsg)
     end
     
     -- Fire event for UI updates
@@ -389,7 +389,7 @@ function Debug:RunComprehensiveRollTest()
     E:SetEnabled(true)
     E.db.pass_on_all = false
 
-    local thresholds = { "poor", "uncommon", "epic" }
+    local thresholds = { "uncommon", "epic" }
     for _, threshold in ipairs(thresholds) do
         E:Print(string.format("  Testing with threshold: %s", threshold:upper()))
         E:SetLootQualityThreshold(threshold)

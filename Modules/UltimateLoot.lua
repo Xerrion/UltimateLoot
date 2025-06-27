@@ -102,9 +102,9 @@ function UltimateLoot:HandleSlashCommand(input)
         E:Print("  status - Show detailed addon status")
         E:Print("  passall, passonall - Toggle Pass on All mode (overrides all rules)")
         E:Print("Aliases: /ul (short form)")
-        E:Print("Current status: " .. (E:GetEnabled() and "|cff00ff00Enabled|r" or "|cffff0000Disabled|r"))
-        local passOnAllStatus = E.db.pass_on_all and "|cffff0000Pass on All ACTIVE|r" or
-            "|cff888888Pass on All disabled|r"
+        E:Print("Current status: " .. (E:GetEnabled() and E.ColorConstants:FormatText("Enabled", "SUCCESS") or E.ColorConstants:FormatText("Disabled", "ERROR")))
+        local passOnAllStatus = E.db.pass_on_all and E.ColorConstants:FormatText("Pass on All ACTIVE", "ERROR") or
+            E.ColorConstants:FormatText("Pass on All disabled", "DISABLED")
         E:Print("Pass on All: " .. passOnAllStatus)
     end
 end

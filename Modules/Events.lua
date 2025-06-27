@@ -2,8 +2,6 @@ local E, L, P = unpack(select(2, ...)) --Import: Engine, Locales, ProfileDB
 
 -- Local quality order (loaded before E.QUALITY_CONSTANTS is available)
 local QUALITY_ORDER = {
-  poor = 0,     -- Poor (Gray)
-  common = 1,   -- Common (White)
   uncommon = 2, -- Uncommon (Green)
   rare = 3,     -- Rare (Blue)
   epic = 4,     -- Epic (Purple)
@@ -122,10 +120,17 @@ function E:START_LOOT_ROLL(_, rollID)
       reason = ruleReason
       E:DebugPrint("[DEBUG] Item rule: Force need on %s (%s)", name, ruleReason)
     elseif rule == "GREED" then
-      rollAction = 2 -- Greed
+      rollAction = 2 -- Always Greed (never disenchant for this rule)
       shouldPass = true
       reason = ruleReason
       E:DebugPrint("[DEBUG] Item rule: Force greed on %s (%s)", name, ruleReason)
+    elseif rule == "GREED_DISENCHANT" then
+      -- Use disenchant if available, otherwise greed
+      rollAction = canDisenchant and 3 or 2
+      shouldPass = true
+      reason = canDisenchant and (ruleReason .. " (disenchanting)") or ruleReason
+      E:DebugPrint("[DEBUG] Item rule: Force %s on %s (%s)", 
+        canDisenchant and "disenchant" or "greed", name, ruleReason)
     else
       -- No specific rule, use quality threshold
       shouldPass = quality <= thresholdValue
@@ -134,11 +139,27 @@ function E:START_LOOT_ROLL(_, rollID)
   end
 
   if shouldPass then
-    -- Roll on the loot (0=Pass, 1=Need, 2=Greed)
+    -- If we would pass, check if we should disenchant instead (unless Pass on All is active)
+    if rollAction == 0 and canDisenchant and not E.db.pass_on_all then
+      rollAction = 3
+      reason = reason .. " (disenchanting)"
+      E:DebugPrint("[DEBUG] Switching from pass to disenchant for %s", name)
+    end
+
+    -- Roll on the loot
     local success = pcall(RollOnLoot, rollID, rollAction)
 
     if success then
-      local actionName = (rollAction == 1 and "needed" or rollAction == 2 and "greeded" or "passed")
+      local actionName
+      if rollAction == 1 then
+        actionName = "needed"
+      elseif rollAction == 2 then
+        actionName = "greeded"
+      elseif rollAction == 3 then
+        actionName = "disenchanted"
+      else
+        actionName = "passed"
+      end
       
       E:DebugPrint("[DEBUG] Successfully %s on %s (%s)", actionName, name, reason)
 
@@ -164,16 +185,21 @@ function E:START_LOOT_ROLL(_, rollID)
         eventData.threshold = threshold
         eventData.thresholdValue = thresholdValue
         eventData.action = "Passed on"
-      else
-        -- Fire event for other roll types (Need/Greed)
-        eventData.action = (rollAction == 1 and "Rolled Need on" or "Rolled Greed on")
+      elseif rollAction == 1 then
+        eventData.action = "Rolled Need on"
+      elseif rollAction == 2 then
+        eventData.action = "Rolled Greed on"
+      elseif rollAction == 3 then
+        eventData.action = "Disenchanted"
       end
 
       self:SendMessage("ULTIMATELOOT_ITEM_HANDLED", eventData)
 
-      -- Track the roll (only for passes to avoid duplicate tracking)
-      if rollAction == 0 and self.Tracker then
-        self.Tracker:TrackRoll(itemLink, name, quality, rollAction)
+      -- Track the roll for all actions (Pass=0, Need=1, Greed=2, Disenchant=3)
+      -- Map disenchant (3) to greed (2) for tracking purposes since they're functionally similar
+      local trackingRollType = rollAction == 3 and 2 or rollAction
+      if self.Tracker then
+        self.Tracker:TrackRoll(itemLink, name, quality, trackingRollType)
       end
     else
       E:DebugPrint("[DEBUG] Failed to roll on %s - RollOnLoot call failed", name)

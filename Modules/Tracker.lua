@@ -3,39 +3,34 @@ local E, L, P = unpack(select(2, ...)) --Import: Engine, Locales, ProfileDB
 local Tracker = E:NewModule("Tracker", "AceEvent-3.0")
 E.Tracker = Tracker
 
--- Centralized quality constants - used across multiple files
+-- Centralized quality constants - used across multiple files (excludes poor and common)
 E.QUALITY_CONSTANTS = {
-    POOR = 0,
-    COMMON = 1,
+    -- Note: Poor (0) and Common (1) qualities are not supported by this addon
     UNCOMMON = 2,
     RARE = 3,
     EPIC = 4,
     LEGENDARY = 5,
 
-    -- Quality order mapping for settings
+    -- Quality order mapping for settings (starts from uncommon)
     ORDER = {
-        poor = 0,
-        common = 1,
         uncommon = 2,
         rare = 3,
         epic = 4,
         legendary = 5
     },
 
-    -- Quality colors matching WoW's item quality colors
+    -- Quality colors using WoW's built-in item quality colors
     COLORS = {
-        [0] = { 0.62, 0.62, 0.62 }, -- Poor (gray)
-        [1] = { 1, 1, 1 },          -- Common (white)
-        [2] = { 0.12, 1, 0 },       -- Uncommon (green)
-        [3] = { 0, 0.44, 0.87 },    -- Rare (blue)
-        [4] = { 0.64, 0.21, 0.93 }, -- Epic (purple)
-        [5] = { 1, 0.5, 0 },        -- Legendary (orange)
+        [0] = { ITEM_QUALITY_COLORS[0].r, ITEM_QUALITY_COLORS[0].g, ITEM_QUALITY_COLORS[0].b }, -- Poor (gray)
+        [1] = { ITEM_QUALITY_COLORS[1].r, ITEM_QUALITY_COLORS[1].g, ITEM_QUALITY_COLORS[1].b }, -- Common (white)
+        [2] = { ITEM_QUALITY_COLORS[2].r, ITEM_QUALITY_COLORS[2].g, ITEM_QUALITY_COLORS[2].b }, -- Uncommon (green)
+        [3] = { ITEM_QUALITY_COLORS[3].r, ITEM_QUALITY_COLORS[3].g, ITEM_QUALITY_COLORS[3].b }, -- Rare (blue)
+        [4] = { ITEM_QUALITY_COLORS[4].r, ITEM_QUALITY_COLORS[4].g, ITEM_QUALITY_COLORS[4].b }, -- Epic (purple)
+        [5] = { ITEM_QUALITY_COLORS[5].r, ITEM_QUALITY_COLORS[5].g, ITEM_QUALITY_COLORS[5].b }, -- Legendary (orange)
     },
 
-    -- Quality names
+    -- Quality names (uncommon and above)
     NAMES = {
-        [0] = "Poor",
-        [1] = "Common",
         [2] = "Uncommon",
         [3] = "Rare",
         [4] = "Epic",
@@ -66,8 +61,7 @@ function Tracker:OnInitialize()
                     greed = 0, -- Greed/Disenchant rolls (rollType 2)
                 },
                 rollsByQuality = {
-                    [0] = { pass = 0, need = 0, greed = 0 }, -- Poor
-                    [1] = { pass = 0, need = 0, greed = 0 }, -- Common
+                    -- Note: Poor (0) and Common (1) are not tracked by this addon
                     [2] = { pass = 0, need = 0, greed = 0 }, -- Uncommon
                     [3] = { pass = 0, need = 0, greed = 0 }, -- Rare
                     [4] = { pass = 0, need = 0, greed = 0 }, -- Epic
@@ -101,8 +95,8 @@ function Tracker:OnInitialize()
         E.db.tracker.stats.rollsByQuality = {}
     end
 
-    -- Ensure all quality levels exist (0-5) with roll type tracking
-    for quality = 0, 5 do
+    -- Ensure all quality levels exist (2-5 only, excluding poor and common) with roll type tracking
+    for quality = 2, 5 do
         if not E.db.tracker.stats.rollsByQuality[quality] then
             E.db.tracker.stats.rollsByQuality[quality] = { pass = 0, need = 0, greed = 0 }
             E:DebugPrint("[DEBUG] Fixed missing quality %d roll counters", quality)
@@ -127,8 +121,8 @@ function Tracker:TrackRoll(itemLink, itemName, quality, rollType)
     if not self.db.enabled then return end
 
     -- Validate input parameters for edge case testing
-    if quality == nil or quality < 0 or quality > 5 then
-        E:DebugPrint("[DEBUG] TrackRoll: Invalid quality %s, skipping", tostring(quality))
+    if quality == nil or quality < 2 or quality > 5 then
+        E:DebugPrint("[DEBUG] TrackRoll: Invalid quality %s (only uncommon+ supported), skipping", tostring(quality))
         return
     end
 

@@ -24,13 +24,14 @@ local minimapIconData = {
     OnTooltipShow = function(tooltip)
         if not tooltip or not tooltip.AddLine then return end
 
-        -- Cache values to avoid multiple function calls
         local enabled = E:GetEnabled()
-        local status = enabled and "|cff00ff00ENABLED|r" or "|cffff0000DISABLED|r"
+        local threshold = E:GetLootQualityThreshold()
+
+        -- Title with status
+        local status = enabled and E.ColorConstants:FormatText("ENABLED", "SUCCESS") or E.ColorConstants:FormatText("DISABLED", "ERROR")
         tooltip:AddLine("UltimateLoot [" .. status .. "]")
 
         if enabled then
-            local threshold = E:GetLootQualityThreshold()
             tooltip:AddLine("Threshold: " .. (threshold or "unknown"):upper(), 1, 1, 1)
 
             -- Show recent stats if available
@@ -40,7 +41,6 @@ local minimapIconData = {
                     tooltip:AddLine(" ")
                     tooltip:AddLine("Total Items Handled: " .. stats.totalHandled, 0.7, 0.7, 1)
 
-                    -- Cache timeframe stats to avoid duplicate calculations
                     local hour1 = E.Tracker:GetRollsByTimeframe(1)
                     local hour24 = E.Tracker:GetRollsByTimeframe(24)
                     if hour1.total > 0 or hour24.total > 0 then
@@ -60,11 +60,10 @@ local minimapIconData = {
 
 function MinimapIcon:OnInitialize()
     -- Register the minimap icon
-    local LibDBIcon = E.Libs.LibDBIcon
-    if LibDBIcon then
+    if E.Libs.LibDBIcon then
         -- Check if already registered to prevent "Already registered" error
-        if not LibDBIcon:IsRegistered("UltimateLoot") then
-            LibDBIcon:Register("UltimateLoot", minimapIconData, E.db.minimap)
+        if not E.Libs.LibDBIcon:IsRegistered("UltimateLoot") then
+            E.Libs.LibDBIcon:Register("UltimateLoot", minimapIconData, E.db.minimap)
             E:DebugPrint("[DEBUG] MinimapIcon: Registered with LibDBIcon")
         else
             E:DebugPrint("[DEBUG] MinimapIcon: Already registered, skipping registration")
@@ -83,8 +82,7 @@ end
 
 function MinimapIcon:UpdateIcon()
     -- Force tooltip refresh by updating the icon slightly
-    local LibDBIcon = E.Libs.LibDBIcon
-    if LibDBIcon and LibDBIcon:IsRegistered("UltimateLoot") then
+    if E.Libs.LibDBIcon and E.Libs.LibDBIcon:IsRegistered("UltimateLoot") then
         -- The tooltip will be refreshed on next hover
         E:DebugPrint("[DEBUG] MinimapIcon: Icon updated")
     end
@@ -100,9 +98,10 @@ function MinimapIcon:ShowContextMenu()
     local menuFrame = CreateFrame("Frame", "UltimateLootMinimapMenu", UIParent, "UIDropDownMenuTemplate")
 
     local function InitializeMenu(self, level)
+        local info = UIDropDownMenu_CreateInfo()
+
         if level == 1 then
             -- Toggle Enabled/Disabled
-            local info = UIDropDownMenu_CreateInfo()
             info.text = E:GetEnabled() and "Disable UltimateLoot" or "Enable UltimateLoot"
             info.func = function()
                 E:SetEnabled(not E:GetEnabled())
@@ -111,52 +110,50 @@ function MinimapIcon:ShowContextMenu()
             UIDropDownMenu_AddButton(info)
 
             -- Separator
-            local sepInfo = UIDropDownMenu_CreateInfo()
-            sepInfo.disabled = true
-            sepInfo.notCheckable = true
-            UIDropDownMenu_AddButton(sepInfo)
+            info = UIDropDownMenu_CreateInfo()
+            info.disabled = true
+            info.notCheckable = true
+            UIDropDownMenu_AddButton(info)
 
             -- Open Main Window
-            local openInfo = UIDropDownMenu_CreateInfo()
-            openInfo.text = "Open UltimateLoot"
-            openInfo.func = function()
+            info = UIDropDownMenu_CreateInfo()
+            info.text = "Open UltimateLoot"
+            info.func = function()
                 if E.TrackerUI and E.TrackerUI.ShowTracker then
                     E.TrackerUI:ShowTracker()
                 else
                     E:Print("Tracker UI not available.")
                 end
             end
-            openInfo.notCheckable = true
-            UIDropDownMenu_AddButton(openInfo)
+            info.notCheckable = true
+            UIDropDownMenu_AddButton(info)
 
             -- Quick threshold submenu
-            local thresholdInfo = UIDropDownMenu_CreateInfo()
-            thresholdInfo.text = "Quality Threshold"
-            thresholdInfo.hasArrow = true
-            thresholdInfo.value = "threshold"
-            thresholdInfo.notCheckable = true
-            UIDropDownMenu_AddButton(thresholdInfo)
+            info = UIDropDownMenu_CreateInfo()
+            info.text = "Quality Threshold"
+            info.hasArrow = true
+            info.value = "threshold"
+            info.notCheckable = true
+            UIDropDownMenu_AddButton(info)
 
             -- Separator
-            local sepInfo2 = UIDropDownMenu_CreateInfo()
-            sepInfo2.disabled = true
-            sepInfo2.notCheckable = true
-            UIDropDownMenu_AddButton(sepInfo2)
+            info = UIDropDownMenu_CreateInfo()
+            info.disabled = true
+            info.notCheckable = true
+            UIDropDownMenu_AddButton(info)
 
             -- Hide minimap icon
-            local hideInfo = UIDropDownMenu_CreateInfo()
-            hideInfo.text = "Hide Minimap Icon"
-            hideInfo.func = function()
+            info = UIDropDownMenu_CreateInfo()
+            info.text = "Hide Minimap Icon"
+            info.func = function()
                 MinimapIcon:Hide()
                 E:Print("Minimap icon hidden. Use '/ultimateloot minimap show' to restore it.")
             end
-            hideInfo.notCheckable = true
-            UIDropDownMenu_AddButton(hideInfo)
+            info.notCheckable = true
+            UIDropDownMenu_AddButton(info)
         elseif level == 2 and UIDROPDOWNMENU_MENU_VALUE == "threshold" then
-            local thresholds = { "poor", "common", "uncommon", "rare", "epic", "legendary" }
+            local thresholds = { "uncommon", "rare", "epic", "legendary" }
             local thresholdNames = {
-                poor = "Poor (Gray)",
-                common = "Common (White)",
                 uncommon = "Uncommon (Green)",
                 rare = "Rare (Blue)",
                 epic = "Epic (Purple)",
@@ -166,13 +163,13 @@ function MinimapIcon:ShowContextMenu()
             local currentThreshold = E:GetLootQualityThreshold()
 
             for _, threshold in ipairs(thresholds) do
-                local thresholdItemInfo = UIDropDownMenu_CreateInfo()
-                thresholdItemInfo.text = thresholdNames[threshold]
-                thresholdItemInfo.func = function()
+                info = UIDropDownMenu_CreateInfo()
+                info.text = thresholdNames[threshold]
+                info.func = function()
                     E:SetLootQualityThreshold(threshold)
                 end
-                thresholdItemInfo.checked = (currentThreshold == threshold)
-                UIDropDownMenu_AddButton(thresholdItemInfo, level)
+                info.checked = (currentThreshold == threshold)
+                UIDropDownMenu_AddButton(info, level)
             end
         end
     end
@@ -182,10 +179,9 @@ function MinimapIcon:ShowContextMenu()
 end
 
 function MinimapIcon:Show()
-    local LibDBIcon = E.Libs.LibDBIcon
-    if LibDBIcon and LibDBIcon:IsRegistered("UltimateLoot") then
+    if E.Libs.LibDBIcon and E.Libs.LibDBIcon:IsRegistered("UltimateLoot") then
         E.db.minimap.hide = false
-        LibDBIcon:Show("UltimateLoot")
+        E.Libs.LibDBIcon:Show("UltimateLoot")
         E:DebugPrint("[DEBUG] MinimapIcon: Shown")
     else
         E:DebugPrint("[DEBUG] MinimapIcon: Cannot show - not registered or LibDBIcon unavailable")
@@ -193,10 +189,9 @@ function MinimapIcon:Show()
 end
 
 function MinimapIcon:Hide()
-    local LibDBIcon = E.Libs.LibDBIcon
-    if LibDBIcon and LibDBIcon:IsRegistered("UltimateLoot") then
+    if E.Libs.LibDBIcon and E.Libs.LibDBIcon:IsRegistered("UltimateLoot") then
         E.db.minimap.hide = true
-        LibDBIcon:Hide("UltimateLoot")
+        E.Libs.LibDBIcon:Hide("UltimateLoot")
         E:DebugPrint("[DEBUG] MinimapIcon: Hidden")
     else
         E:DebugPrint("[DEBUG] MinimapIcon: Cannot hide - not registered or LibDBIcon unavailable")
@@ -212,8 +207,7 @@ function MinimapIcon:Toggle()
 end
 
 function MinimapIcon:IsShown()
-    local LibDBIcon = E.Libs.LibDBIcon
-    if LibDBIcon and LibDBIcon:IsRegistered("UltimateLoot") then
+    if E.Libs.LibDBIcon and E.Libs.LibDBIcon:IsRegistered("UltimateLoot") then
         return not E.db.minimap.hide
     end
     return false

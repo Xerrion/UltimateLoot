@@ -5,10 +5,11 @@ E.ItemRules = ItemRules
 
 -- Rule types
 local RULE_TYPES = {
-    BLACKLIST = "blacklist",      -- Never pass on these items
-    WHITELIST = "whitelist",      -- Always pass on these items
-    ALWAYS_NEED = "always_need",  -- Always roll need on these items
-    ALWAYS_GREED = "always_greed" -- Always roll greed on these items
+    BLACKLIST = "blacklist",              -- Never pass on these items
+    WHITELIST = "whitelist",              -- Always pass on these items
+    ALWAYS_NEED = "always_need",          -- Always roll need on these items
+    ALWAYS_GREED = "always_greed",        -- Always roll greed on these items
+    ALWAYS_GREED_DISENCHANT = "always_greed_disenchant" -- Always roll greed/disenchant on these items
 }
 
 function ItemRules:OnInitialize()
@@ -35,7 +36,7 @@ function ItemRules:CheckItemRule(itemName, itemLink, quality)
     local rules = E.db.item_rules
     
     -- OPTIMIZED: Check rules in priority order, return immediately on first match
-    -- Priority order: blacklist > always_need > always_greed > whitelist
+    -- Priority order: blacklist > always_need > always_greed > always_greed_disenchant > whitelist
     
     -- Check blacklist first (highest priority)
     if self:IsItemInList(itemName, itemLink, rules.blacklist) then
@@ -53,6 +54,12 @@ function ItemRules:CheckItemRule(itemName, itemLink, quality)
     if self:IsItemInList(itemName, itemLink, rules.always_greed) then
         E:DebugPrint("[DEBUG] ItemRules: Found always_greed rule for %s", itemName)
         return "GREED", "Item in always greed list"
+    end
+    
+    -- Check always_greed_disenchant (fourth priority)
+    if self:IsItemInList(itemName, itemLink, rules.always_greed_disenchant) then
+        E:DebugPrint("[DEBUG] ItemRules: Found always_greed_disenchant rule for %s", itemName)
+        return "GREED_DISENCHANT", "Item in always greed/disenchant list"
     end
     
     -- Check whitelist (lowest priority)
@@ -215,6 +222,7 @@ function ItemRules:ClearRules(ruleType)
         E.db.item_rules.whitelist = {}
         E.db.item_rules.always_need = {}
         E.db.item_rules.always_greed = {}
+        E.db.item_rules.always_greed_disenchant = {}
         E:DebugPrint("[DEBUG] ItemRules: Cleared all rules")
     else
         local ruleKey = RULE_TYPES[ruleType:upper()]
