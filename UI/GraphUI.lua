@@ -119,8 +119,9 @@ function GraphUI:CreateGraphTab(container)
             if not bar.texture then
                 bar.texture = bar:CreateTexture(nil, "ARTWORK")
                 bar.texture:SetAllPoints()
-                -- Use SetTexture with color for WoW 3.3.5a compatibility
-                bar.texture:SetTexture(0.1, 0.5, 0.8, 0.8)
+                -- Use WoW's default rare blue color for graph bars
+                local color = E.ColorConstants.COLORS.RARE
+                bar.texture:SetTexture(color[1], color[2], color[3], 0.8)
             end
 
             local label = bar.label
